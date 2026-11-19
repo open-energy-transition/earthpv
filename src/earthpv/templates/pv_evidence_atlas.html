@@ -2500,7 +2500,7 @@ out geom;</div>
       + `<button type="button" class="btn" data-act="dl"${off}>GeoJSON</button></div>`
       + `<div class="ap-msg" role="status" aria-live="polite">${esc(spec.idNote || "")}</div>`
       + (spec.cmd ? `<details><summary>Register it (maintainers)</summary><div class="ap-cmd">${esc(spec.cmd)}</div></details>` : "")
-      + `<div class="foot"><a href="${siteRoot()}contribute/" target="_top">How to map a calibration area</a>`
+      + `<div class="foot"><a href="${siteRoot()}contribute/calibration-areas/" target="_top">How to map a calibration area</a>`
       + ` &middot; <a href="${esc(reportUrl(spec))}" target="_blank" rel="noopener">Report progress</a></div>`;
     const msg = d.querySelector(".ap-msg");
     // Re-fitted on every status line too: the popup grows upward from its anchor.
@@ -4156,16 +4156,29 @@ out geom;</div>
         + `sheet of false alarms as a solar park the map does not have yet. None counts towards `
         + `this atlas's capacity until it is mapped in OpenStreetMap or a person has judged it `
         + `solar on the Sentinel-2 imagery the model saw.` : "")
+      // Outlines a person judged on the country's review pages (scripts/oversize_review.py),
+      // sorted by release_leads.build (2026-11-19): judged solar to a file of their own, judged
+      // not solar out of every file. A file built before says nothing about them.
+      + (L.confirmed ? ` ${fmt(L.confirmed.n)} outline${L.confirmed.n === 1 ? "" : "s"} that a `
+        + `person judged solar on this country's review pages, and that OpenStreetMap does not `
+        + `have yet, ${L.confirmed.n === 1 ? "is" : "are"} in a file of their own, largest `
+        + `first: each one is a real installation waiting to be traced, so start there.` : "")
+      + (L.judged_not_pv && (L.judged_not_pv.leads + L.judged_not_pv.blobs)
+        ? ` ${fmt(L.judged_not_pv.leads + L.judged_not_pv.blobs)} outlines a person judged not `
+          + `solar are left out of every file.` : "")
       + (L.checked ? (L.checked.all
           ? ` Every lead in this file has been checked by a person`
             + (L.checked.date ? ` (${esc(L.checked.by || "")}, ${day(L.checked.date)})` : "") + `.`
           : ` Checking leads and mapping the real installations in OpenStreetMap is what `
             + `localizes the model: about a third of the leads and of the very large outlines, `
             + `worked from the top, are enough to retrain it.`) : "")
-      + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/" `
+      + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/leads/" `
       + `target="_blank" rel="noopener">mapping guide</a> explains how to work through it.`;
     document.getElementById("leadsLink").innerHTML =
-      `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.file)}</a>`
+      (L.confirmed ? `<a href="${esc(L.confirmed.url)}" target="_blank" rel="noopener">${esc(L.confirmed.file)}</a>`
+        + `<span class="dl-size">GeoJSON · ${fmt(L.confirmed.n)} judged solar · `
+        + `${fmtBytes(L.confirmed.size_bytes)}</span>` : "")
+      + `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.file)}</a>`
       + `<span class="dl-size">GeoJSON · ${fmt(L.n)} leads · ${fmtBytes(L.size_bytes)}</span>`
       + (L.blobs ? `<a href="${esc(L.blobs.url)}" target="_blank" rel="noopener">${esc(L.blobs.file)}</a>`
         + `<span class="dl-size">GeoJSON · ${fmt(L.blobs.n)} very large outlines · `

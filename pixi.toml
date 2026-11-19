@@ -109,6 +109,7 @@ roofclf-tiles = "python scripts/tile_roofclf_detections_geojson.py"
 quadrat-correlations = "python scripts/quadrat_correlations.py"
 # Judge very large model outlines (blobs) by eye: draw|package|apply|status. A step of every
 # country's run; only a judged or mapped blob counts. See scripts/oversize_review.py.
+flywheel-status = "python scripts/flywheel_status.py"
 blob-review = "python scripts/oversize_review.py"
 # The same review for the large leads below the cap (10,000 m2 up to it): a judged lead is
 # priced by its verdict instead of its size bin's P(real). A step of every country's run too.

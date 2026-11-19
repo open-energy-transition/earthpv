@@ -2465,7 +2465,7 @@ FLY_STATIONS = [
     # (angle, title, subtitle, done by people)
     (-90, "Detect from space", "Sentinel-2, open models", False),
     (-30, "Publish the atlas", "estimate, leads, areas", False),
-    (30, "Map the leads", "arrays of 400 m² and up", True),
+    (30, "Check the leads", "judge them, then map", True),
     (90, "Map calibration areas", "every panel inside the line", True),
     (150, "Local datasets", "registers, statistics", True),
     (210, "Retrain the model", "recalibrate on new labels", False),
@@ -2625,6 +2625,248 @@ def write_flywheel_diagram():
         suffix = ".svg" if t.name == "light" else ".dark.svg"
         path = OUT / f"osm_ai_flywheel{suffix}"
         path.write_text(build_flywheel_svg(t))
+        print(f"  wrote {path.relative_to(ROOT)}")
+
+
+# ------------------------------------------- the flywheel, stage by stage (Contribute Data)
+#
+# The same six stations as the wheel above, unrolled into a column so each can say who does
+# it, what it hands on and which quality level it builds; station 3 opens into its two ways
+# of checking a lead, the review page and the editor. OpenStreetMap is a spine on the right:
+# teal spokes carry what people map into it and back out as counted capacity and as labels.
+# The amber dashed path is the review page's shortcut, a verdict counted without mapping.
+# The return path on the left closes the loop. Medal colours are the site's --pv-tier-* tokens.
+
+STG_W = 760
+STG_LOOP_X = 32
+STG_X, STG_CW = 52, 496           # stage cards
+STG_SPINE_X, STG_SPINE_W = 612, 128
+STG_GAP = 26                      # between cards
+STG_SUB_H = 90                    # a sub-card inside station 3
+TIER_COLOURS = {"bronze": ("#b5793e", "Bronze"), "silver": ("#8f9aa6", "Silver"),
+                "gold": ("#c9a227", "Gold")}
+
+# (number, title, actor, people?, detail lines, hands on, tiers)
+STG_STAGES = [
+    ("1", "Detect from space", "model", False,
+     ["The country's own model reads dry-season Sentinel-2 imagery",
+      "and outlines every array of about 400 m² and up; classifiers",
+      "score the roofs and farm plots below that size. Solar glint",
+      "across the scene archive confirms the larger installations."],
+     "model outlines of every size", ["bronze", "gold"]),
+    ("2", "Publish the atlas", "model", False,
+     ["Verified and Best capacity per 0.1° cell with a 90% range,",
+      "the lead files to work through, and calibration areas to",
+      "map, with a star on the one to start with."],
+     "the atlas and its downloads", ["bronze"]),
+    ("3", "Check the leads", None, True, [],
+     "a third of each lead file checked", ["silver"]),
+    ("4", "Map calibration areas", "you, in iD or JOSM", True,
+     ["Every visible panel inside a 1 to 3 km box, down to the",
+      "smallest rooftop unit. A half-mapped area is left out."],
+     "complete areas: the small-array fit", ["silver", "gold"]),
+    ("5", "Find local datasets", "you, in a browser", True,
+     ["A register, statistics office, net-metering list or study:",
+      "what it counts, as of when, and under which licence."],
+     "drawn beside the atlas; a full register calibrates it", ["gold"]),
+    ("6", "Retrain and recalibrate", "model and maintainer", False,
+     ["The model is fine-tuned again on the country's OpenStreetMap",
+      "solar; complete areas refit the small-installation estimate,",
+      "which people then check on cells drawn at random."],
+     "a more local model, back to stage 1", ["silver", "gold"]),
+]
+# Station 3's two ways in: (title, actor, detail lines, hands on).
+STG_CHECKS = [
+    ("Judge on a review page", "you, on your PC",
+     ["One picture per outline of 1 ha and up, from the imagery the",
+      "model saw: 1 solar, 2 not solar, 3 unsure, 4 bright roof."],
+     "counted at the next rebuild"),
+    ("Map in JOSM or iD", "you, in an editor",
+     ["Confirmed leads first, then the lead file from the top and the",
+      "blobs largest first. Trace from imagery, never from the lead."],
+     "installations traced in OpenStreetMap"),
+]
+
+
+def build_flywheel_stages_svg(t: Theme) -> str:
+    parts: list[str] = []
+
+    def text(x, y, s, size=12, fill=None, weight=None, anchor="start", extra=""):
+        w = f' font-weight="{weight}"' if weight else ""
+        parts.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="{size}" '
+                     f'fill="{fill or t.ink_dim}" text-anchor="{anchor}"{w}{extra}>'
+                     f'{_esc(s)}</text>')
+
+    def marker(color):
+        return f"url(#ah-{color.lstrip('#')}-{t.name})"
+
+    def chip(right, y, label, people):
+        """An actor chip ending at `right`, centred on `y`: teal-tinted for people."""
+        w = len(label) * 6.4 + 18
+        fill = (f'fill="{t.s3}" fill-opacity="0.16" stroke="{t.s3}" stroke-opacity="0.5"'
+                if people else f'fill="none" stroke="{t.rule}"')
+        parts.append(f'<rect x="{right - w:.1f}" y="{y - 10:.1f}" width="{w:.1f}" height="20" '
+                     f'rx="10" {fill} stroke-width="1"/>')
+        text(right - w / 2, y + 4, label, size=11, fill=t.ink if people else t.ink_dim,
+             anchor="middle")
+
+    def medals(right, y, tiers):
+        """The tiers a stage builds, right-aligned and centred on `y`."""
+        x = right
+        for tier in reversed(tiers):
+            colour, name = TIER_COLOURS[tier]
+            x -= len(name) * 6.3
+            text(x, y + 4, name, size=11, fill=t.ink)
+            x -= 11
+            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="{colour}"/>')
+            x -= 16
+
+    def hands_on(x, y, s):
+        text(x, y, "→ " + s, size=12, fill=t.ink, weight="600")
+
+    def spoke(y, direction, label):
+        """A teal spoke between the card column and the OpenStreetMap spine at `y`."""
+        a, b = STG_X + STG_CW + 3, STG_SPINE_X - 4
+        x0, x1 = (a, b) if direction == "in" else (b, a)
+        parts.append(f'<path d="M{x0:.1f},{y:.1f} H{x1:.1f}" stroke="{t.s3}" '
+                     f'stroke-width="2.2" marker-end="{marker(t.s3)}"/>')
+        text((a + b) / 2, y - 7, label, size=10.5, fill=t.s3, anchor="middle", weight="600")
+
+    parts.append(f'<text x="24" y="36" font-size="18.5" font-weight="600" fill="{t.ink}">'
+                 'One turn of the mapping flywheel</text>')
+    text(24, 59, "Who does each stage, what it hands on, and the quality level it builds.",
+         size=13)
+
+    # Lay the cards out first: (top, height) per stage, and station 3's sub-cards.
+    y, boxes, subs = 84, [], []
+    for n, _title, _actor, _people, lines, _out, _tiers in STG_STAGES:
+        if n == "3":
+            h = 40 + 2 * STG_SUB_H + 34 + 30
+            subs = [y + 40, y + 40 + STG_SUB_H + 34]
+        else:
+            h = 42 + 17 * len(lines) + 30
+        boxes.append((y, h))
+        y += h + STG_GAP
+    bottom = y - STG_GAP
+    card_r = STG_X + STG_CW
+
+    # OpenStreetMap, the spine every mapped panel passes through (stations 2 to 6).
+    s_top, s_bot = boxes[1][0], boxes[5][0] + boxes[5][1]
+    parts.append(f'<rect x="{STG_SPINE_X}" y="{s_top}" width="{STG_SPINE_W}" '
+                 f'height="{s_bot - s_top}" rx="12" fill="{t.card}" stroke="{t.s3}" '
+                 f'stroke-width="2.2"/>')
+    sx = STG_SPINE_X + STG_SPINE_W / 2
+    logo_y = boxes[2][0] + boxes[2][1] - 40
+    parts.append(_osm_logo(sx - 32, logo_y, 64))
+    text(sx, logo_y + 86, "OpenStreetMap", size=12.5, fill=t.s3, weight="600", anchor="middle")
+    for k, line in enumerate(["every checked panel,", "openly licensed"]):
+        text(sx, logo_y + 104 + 14 * k, line, size=10.5, anchor="middle")
+
+    # The return path: stage 6 hands a more local model back to stage 1.
+    (y1, h1), (y6, h6) = boxes[0], boxes[5]
+    m1, m6 = y1 + h1 / 2, y6 + h6 / 2
+    lx, r = STG_LOOP_X, 12
+    parts.append(f'<path d="M{STG_X - 2},{m6:.1f} H{lx + r} Q{lx},{m6:.1f} {lx},{m6 - r:.1f} '
+                 f'V{m1 + r:.1f} Q{lx},{m1:.1f} {lx + r},{m1:.1f} H{STG_X - 3}" fill="none" '
+                 f'stroke="{t.ink_dim}" stroke-width="2.2" marker-end="{marker(t.ink_dim)}"/>')
+    mid = (m1 + m6) / 2
+    text(lx - 9, mid, "each turn starts from a more complete map and a more local model",
+         size=11.5, anchor="middle", extra=f' transform="rotate(-90 {lx - 9} {mid:.0f})"')
+
+    for i, ((n, title, actor, people, lines, out, tiers), (top, h)) in enumerate(
+            zip(STG_STAGES, boxes)):
+        stroke = t.s3 if people else t.rule
+        parts.append(f'<rect x="{STG_X}" y="{top}" width="{STG_CW}" height="{h}" rx="10" '
+                     f'fill="{t.card}" stroke="{stroke}" stroke-width="1.4"/>')
+        nx, ty = STG_X + 24, top + 24
+        parts.append(f'<circle cx="{nx}" cy="{ty}" r="13" fill="none" stroke="{t.ink}" '
+                     f'stroke-width="1.4"/>')
+        text(nx, ty + 5, n, size=13, fill=t.ink, weight="600", anchor="middle")
+        text(nx + 24, ty + 5, title, size=14.5, fill=t.ink, weight="600")
+        if actor:
+            chip(card_r - 14, ty, actor, people)
+        for k, line in enumerate(lines):
+            text(nx + 24, top + 50 + 17 * k, line)
+        hands_on(nx + 24, top + h - 14, out)
+        medals(card_r - 14, top + h - 18, tiers)
+        if i < len(STG_STAGES) - 1:
+            ax = STG_X + 24
+            parts.append(f'<path d="M{ax},{top + h + 2} V{top + h + STG_GAP - 3}" '
+                         f'stroke="{t.ink_dim}" stroke-width="2.2" '
+                         f'marker-end="{marker(t.ink_dim)}"/>')
+
+    # Station 3's two ways of checking a lead, the first feeding the second.
+    sub_x, sub_w = STG_X + 46, STG_CW - 60
+    for (title, actor, lines, out), sy in zip(STG_CHECKS, subs):
+        parts.append(f'<rect x="{sub_x}" y="{sy}" width="{sub_w}" height="{STG_SUB_H}" rx="8" '
+                     f'fill="{t.surface}" stroke="{t.s3}" stroke-opacity="0.6" '
+                     f'stroke-width="1.2"/>')
+        text(sub_x + 14, sy + 23, title, size=13.5, fill=t.ink, weight="600")
+        chip(sub_x + sub_w - 12, sy + 19, actor, True)
+        for k, line in enumerate(lines):
+            text(sub_x + 14, sy + 44 + 16 * k, line, size=11.5)
+        hands_on(sub_x + 14, sy + STG_SUB_H - 11, out)
+    ax = sub_x + 40
+    parts.append(f'<path d="M{ax},{subs[0] + STG_SUB_H + 2} V{subs[1] - 3}" stroke="{t.ink}" '
+                 f'stroke-width="2.2" marker-end="{marker(t.ink_dim)}"/>')
+    text(ax + 12, subs[0] + STG_SUB_H + 22, "judged solar: into the confirmed-lead file, "
+         "mapped first", size=11.5, fill=t.ink)
+
+    # Spokes through OpenStreetMap, and the verdicts' shortcut into the atlas.
+    spoke(boxes[1][0] + 30, "out", "counted")
+    spoke(subs[1] + STG_SUB_H / 2, "in", "mapped")
+    spoke(boxes[3][0] + boxes[3][1] / 2, "in", "mapped")
+    spoke(boxes[5][0] + 30, "out", "labels")
+    vy0, vy1 = subs[0] + STG_SUB_H / 2, boxes[1][0] + boxes[1][1] - 26
+    vx = card_r + 18
+    parts.append(f'<path d="M{sub_x + sub_w + 2},{vy0:.1f} H{vx} V{vy1:.1f} H{card_r + 3}" '
+                 f'fill="none" stroke="{t.s1}" stroke-width="2.2" stroke-dasharray="6 4" '
+                 f'marker-end="{marker(t.s1)}"/>')
+    vm = (vy0 + vy1) / 2
+    text(vx + 13, vm, "verdicts", size=10.5, fill=t.s1, weight="600", anchor="middle",
+         extra=f' transform="rotate(90 {vx + 13} {vm:.0f})"')
+
+    # Legend: one key per encoding.
+    ly = bottom + 36
+    parts.append(f'<rect x="24" y="{ly - 10}" width="34" height="20" rx="10" fill="none" '
+                 f'stroke="{t.rule}"/>')
+    text(68, ly + 4, "the pipeline does it", size=11.5)
+    parts.append(f'<rect x="230" y="{ly - 10}" width="34" height="20" rx="10" fill="{t.s3}" '
+                 f'fill-opacity="0.16" stroke="{t.s3}" stroke-opacity="0.5"/>')
+    text(274, ly + 4, "people do it", size=11.5)
+    for k, tier in enumerate(("bronze", "silver", "gold")):
+        parts.append(f'<circle cx="{430 + 16 * k}" cy="{ly}" r="6" '
+                     f'fill="{TIER_COLOURS[tier][0]}"/>')
+    text(476, ly + 4, "the quality level a stage builds", size=11.5)
+    ly2 = ly + 28
+    parts.append(f'<path d="M24,{ly2} H54" stroke="{t.s3}" stroke-width="2.2" '
+                 f'marker-end="{marker(t.s3)}"/>')
+    text(68, ly2 + 4, "through OpenStreetMap: counted, and learned from", size=11.5)
+    parts.append(f'<path d="M430,{ly2} H460" stroke="{t.s1}" stroke-width="2.2" '
+                 f'stroke-dasharray="6 4" marker-end="{marker(t.s1)}"/>')
+    text(476, ly2 + 4, "a verdict, counted without mapping", size=11.5)
+    note_y = ly2 + 32
+    text(24, note_y, "OpenStreetMap logo: Ken Vermette, CC BY-SA 3.0; a trademark of the "
+         "OpenStreetMap Foundation.", size=10.5)
+
+    height = note_y + 18
+    markers = _svg_markers(t)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{STG_W}" height="{height:.0f}" '
+        f'viewBox="0 0 {STG_W} {height:.0f}" '
+        f'font-family="DejaVu Sans, system-ui, sans-serif">'
+        f'<defs>{"".join(markers)}</defs>'
+        f'<rect width="{STG_W}" height="{height:.0f}" rx="10" fill="{t.surface}"/>'
+        f'{"".join(parts)}</svg>'
+    )
+
+
+def write_flywheel_stages_diagram():
+    OUT.mkdir(parents=True, exist_ok=True)
+    for t in THEMES:
+        suffix = ".svg" if t.name == "light" else ".dark.svg"
+        path = OUT / f"mapping_flywheel_stages{suffix}"
+        path.write_text(build_flywheel_stages_svg(t))
         print(f"  wrote {path.relative_to(ROOT)}")
 
 
@@ -2960,6 +3202,7 @@ def main():
         fig_germany_register_validation(t)
     print("diagrams")
     write_flywheel_diagram()
+    write_flywheel_stages_diagram()
     write_svg_pair(PIPELINE_STRIP, "two_products")
     write_svg_pair(LIGHT_PATHS, "roofclf_light_paths")
     write_architecture_diagram()

@@ -487,6 +487,34 @@ single-pose farms into near-identical orientations 3 to 4 degrees apart, and it 
 orientations that owned no cells. The per-cell route reproduced the whole-outline pose on
 all four single-pose controls.
 
+## A Gold requirement: glint on the large installations (2026-11-19)
+
+A Gold atlas also needs solar glint measured on a share of the country's large
+installations ([quality levels](../atlas-quality-levels.md)). Glint is the one check from
+space that depends neither on the segmentation model nor on the mappers, and the only one
+that measures how the panels are mounted; the installations of 1 ha and more carry most of a
+country's capacity and are where glint is reliably seen.
+
+| | |
+| --- | --- |
+| population | installations of 10,000 m<sup>2</sup> and more mapped in OpenStreetMap, from the atlas's own OSM file, dissolved as the atlas counts them |
+| measured | a survey target inside the installation was read on at least 10 clear Sentinel-2 scenes (`scripts/glint_pose_survey.py`) |
+| enough | at least a third of them, never fewer than 100 (all of them where a country has fewer), and 1,000 where a third would be more |
+| drawn | a census or a random draw; a survey of only the largest does not count |
+| not required | a fitted pose: it depends on latitude, season and tilt, and is reported beside the count |
+
+The thresholds follow the lead rule's third; 100 measured installations give a detection
+share to about &plusmn;0.08, and 1,000 cost about a day of Planetary Computer reads.
+`scripts/glint_coverage.py --aoi <aoi> --survey <name>` computes the numbers and prints the
+`validation.glint_survey` block for the country's config; a Gold page shows Silver until it
+is there. The three surveys run so far already meet it:
+
+| country | installations &ge; 1 ha | measured | required | glinted | pose fitted | survey |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| France | 1,503 | 1,502 | 501 | 673 | 455 | census of every mapped installation &ge; 1,000 m<sup>2</sup> |
+| India | 2,929 | 1,406 | 977 | 397 | 201 | `india2000`, a sample of 2,000 |
+| Pakistan | 608 | 256 | 203 | 172 | 79 | `country2000`, a size-stratified sample of 2,000 |
+
 ## Research scripts
 
 | Script | What it answers |

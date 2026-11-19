@@ -120,7 +120,16 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   draws a country's page after `export`; `data/oversize_review/index.html` lists every
   country's page and `pixi run blob-review status` the counts. Sittings can be partial: apply
   any export, then `density --districts` (no `--force`) and the atlas. Mechanics and pricing are
-  under "Density stage".
+  under "Density stage". **Verdicts of both review pages become mapping leads** (2026-11-19):
+  after the atlas, re-run the `leads` release (below), which moves `pv` outlines to the
+  confirmed-lead file and drops `not_pv`/`bright_roof` ones from the lead files.
+  **`pixi run flywheel-status`** (`scripts/flywheel_status.py`) reads the verdicts into a call
+  per country and placement: precision of new outlines >= 1 ha with a 90% Wilson interval
+  (30+ verdicts; fine if it starts >= 0.8, false alarms if it ends < 0.5; blobs never decide),
+  false alarms per 1,000 cells, and new labels (confirmed leads + OSM edits after the latest
+  local chip corpus) against the corpus; >= 10% asks for a mapping round and a retrain. The
+  thresholds are judgement, approved by the owner (2026-11-19). It cannot see recall: the
+  held-out region decides when to stop.
 - **Large installation review (owner, 2026-11-10).** The same disk page for leads from
   `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
   `scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
@@ -603,8 +612,16 @@ Page rules worth knowing before touching the template:
   `scripts/patch_atlas_leads.py` links them on `results/<aoi>_pv_evidence_atlas.html`; commit
   `configs/atlas_leads.json` (manifest, read by `atlas.leads_release`) with the page. `SOURCES`
   needs an entry only for a non-default run or OSM pull; France links its audited
-  `france-osm-leads-2026-10-22` release instead. **Blobs** (leads above 100,000 m²) go to their
-  own `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`).
+  `france-osm-leads-2026-10-22` release instead. Germany's leads are held to the candidates of
+  its checked 2026-11-01 files (`keep_ids_from`, copies in `data/leads_reference/`), since the
+  pre-cap OSM file its reference also named is gone. **Blobs** (leads above 100,000 m²) go to their
+  own `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`). **Review
+  verdicts sort the files** (`release_leads.review_table`, the calibration table's
+  `oversize_review`/`lead_review` blocks, shared with `release_polygons`): an outline judged
+  `pv` that OSM still lacks goes to `<aoi>_pv_confirmed_leads.geojson` (largest first, written
+  only when non-empty, exempt from every lead screen), one judged not PV is in no file, unsure
+  ones stay marked `review_verdict`. Manifest keys `confirmed` (with `mapped_since`) and
+  `judged_not_pv`; the atlas card lists the confirmed file first.
 - **Polygons**: `scripts/release_polygons.py --aoi <aoi> --upload` (after `leads`) writes
   `<aoi>_pv_polygons.parquet` (model outlines inside the page's regions, any size, with
   `osm_within_100m` and any `review_verdict`, plus the atlas's own `--osm-solar` rows and CSP
@@ -682,7 +699,13 @@ the first candidate on every atlas whose own page reports roofclf or groundclf a
 config picks the star, `start_here: none` stars nothing.
 
 **The community guide is the "Contribute Data" nav section** (`docs/contribute/`; `index.md`
-keeps the `/contribute/` URL that popups, badges and README link to). Mappers report through
+keeps the `/contribute/` URL that popups, badges and README link to). `index.md` is the
+flywheel overview: the stage-by-stage figure (`build_docs_figures.write_flywheel_stages_diagram`,
+`mapping_flywheel_stages.svg`, same six station numbers as `osm_ai_flywheel.svg`, station 3
+"Check the leads" = review page then editor), one section per stage and the quality-level
+summary; the calibration-area how-to is `calibration-areas.md` (the atlas popup's link since
+2026-11-19; older pages still land on the overview) and local datasets `local-data.md`. Nav
+follows the stages. Mappers report through
 `.github/ISSUE_TEMPLATE/calibration-area.yml` (the popup's "Report progress" link prefills it);
 country requests and claims through `new-country.yml` (label `new-country`), prefilled from the
 globe by `new-atlas.js`. A screenshot still to be taken is a `<div class="shot-needed" markdown>`
@@ -767,6 +790,13 @@ open with a closable banner (`WARNING`, `TIER_NOTE` or `LEADS_WARNING`, plus `CT
   `data-earned`) and the page gets the leads banner; `atlas.lead_rule_gaps` names the gaps.
 - **Gold also needs roofclf checked by people (owner)**: random validation and point-data
   inspection (`scripts/export_roofclf_points.py`) on the scoring behind the page.
+- **Gold also needs solar glint measured on the large installations (owner, 2026-11-19)**:
+  a glint survey read >= `atlas.GLINT_MIN_CLEAR` (10) clear scenes over a census or random
+  draw of the installations >= 1 ha mapped in OSM (`atlas.glint_required`: a third, >= 100 or
+  all, 1,000 suffice); declared as `validation.glint_survey`, numbers from
+  `scripts/glint_coverage.py`. A declared Gold without it shows Silver (`atlas.glint_surveyed`,
+  `shown_validation_score`; `build_atlas_pages.GLINT_WARNING`). A fitted pose is not
+  required. France, India and Pakistan's surveys meet it; none is declared yet.
   `derive_validation_score` stops at Silver, so Gold is only ever declared. **No atlas is Gold;
   Pakistan is Silver.** `derive_validation_score` gives Silver to any AOI with a registered area
   in `data/labels/<aoi>/`, `used: false` or not (India is pinned Bronze for that reason).

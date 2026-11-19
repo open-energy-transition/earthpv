@@ -159,6 +159,11 @@ TIER_NOTE = {
 # 2026-11-01; it replaced "every lead checked"). SMALL_GAP says what its calibration leaves
 # out; LEADS_NEED what the lead rule still asks, keyed by `atlas.lead_rule_gaps`.
 LEADS_WARNING = "<strong>This Bronze atlas is not yet verified.</strong> {small}, and {needs}."
+# A page that earned Gold but shows Silver because solar glint has not yet been measured on
+# enough of its large installations (owner, 2026-11-19; atlas.glint_surveyed).
+GLINT_WARNING = ("<strong>This atlas earned Gold on its calibration.</strong> It shows Silver "
+                 "until solar glint has been measured from space on enough of its large "
+                 "installations.")
 SMALL_GAP = {
     # Germany: none since the owner declared its half below 400 m2 validated (2026-11-13), so
     # its banner reads "It earned Silver on its calibration".
@@ -171,8 +176,8 @@ LEADS_NEED = {
 }
 # Where a reader can help: the Contribute Data section (docs/contribute/).
 CTA = {
-    "calibrate": '<a class="atlas-tier-cta" href="../contribute/">Contribute data: map a '
-                 'calibration area &rarr;</a>',
+    "calibrate": '<a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute '
+                 'data: map a calibration area &rarr;</a>',
     "leads": '<a class="atlas-tier-cta" href="../contribute/leads/">Contribute data: map the '
              'model\'s leads &rarr;</a>',
 }
@@ -222,7 +227,14 @@ def page(stem: str, country: str, html: str, title: str | None) -> str:
     parts = ["---", f'title: "EarthPV: {country}"', "hide:", "  - navigation", "  - toc",
              "---", "", '<div class="page-full-bleed fit" markdown>', switcher(stem)]
     earned = earned_of(html)
-    if earned != tier:
+    if earned == "gold" and tier == "silver" and not atlas.lead_rule_gaps(aoi_of(html)):
+        # Gold's glint rule (atlas.glint_surveyed): not a reader's to do, so the usual link.
+        if atlas.glint_surveyed(aoi_of(html))["met"]:
+            raise SystemExit(f"{html}: its badge shows silver below the gold it earned, but "
+                             "its config meets the glint rule; re-badge it first "
+                             "(scripts/patch_atlas_leads.py)")
+        parts.append(banner(tier, GLINT_WARNING, CTA["calibrate"]))
+    elif earned != tier:
         gaps = tuple(atlas.lead_rule_gaps(aoi_of(html)))
         if not gaps:
             raise SystemExit(f"{html}: its badge shows {tier}, below the {earned} it earned, "
@@ -303,8 +315,10 @@ CRITERIA = {
          "`earthpv check-density`"),
         ("Mapping leads published",
          "The model's outlines more than 100 m from any solar installation in "
-         "OpenStreetMap, in two files: the leads, most promising first, and the very large "
-         "outlines, largest first. Leads under 1,000 m&sup2; on ground steeper "
+         "OpenStreetMap, in up to three files: the outlines a person has judged solar on the "
+         "country's review pages, largest first; the other leads, most promising first; and "
+         "the other very large outlines, largest first. An outline a person judged not solar "
+         "is left out of all three. Leads under 1,000 m&sup2; on ground steeper "
          "than 15&deg; are left out (shaded slopes and cliff edges read like panels); "
          "larger ones on steep ground stay, marked <code>steep_review</code>, because a "
          "solar farm can stand on a mountainside, unless the ground is steeper than 30&deg;, "
@@ -350,6 +364,18 @@ CRITERIA = {
          "`scripts/tile_roofclf_detections_geojson.py`, "
          "`results/roofclf_random_validation_log.csv`, `scripts/export_roofclf_points.py`; "
          "owner judgement, `validation.score`"),
+        ("Solar glint measured on the large installations",
+         "Sentinel-2 catches the sun's reflection off a panel on the few dates when sun, panel "
+         "and satellite line up: a check from space that is independent of the model and of "
+         "the mappers, and the only one that measures how the panels are tilted and turned. A "
+         "glint survey has read at least ten clear scenes over a census or a random draw of "
+         "the installations of 1 ha and more mapped in OpenStreetMap, which carry most of the "
+         "capacity: at least a third of them, never fewer than 100 (all of them where a "
+         "country has fewer), and 1,000 where a third would be more. Whether a panel pose "
+         "then fits depends on latitude, season and tilt, so it is reported, not required. "
+         "Until this is recorded the atlas shows Silver.",
+         "`scripts/glint_pose_survey.py`, `scripts/glint_coverage.py`; "
+         "`validation.glint_survey` in `configs/atlas/<aoi>.yaml`"),
     ],
 }
 # The flywheel figure's alt text, as docs/how-it-works.md carries it (build_docs_figures.py
@@ -358,7 +384,8 @@ FLYWHEEL_ALT = (
     "The mapping flywheel: six numbered stations run clockwise round a ring with the "
     "OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model "
     "and the small-installation classifiers. 2, publish the evidence atlas with mapping leads"
-    " and areas to map. 3, people map the leads of 400 square metres and more. 4, people map "
+    " and areas to map. 3, people check the leads, judging the largest on review pages and "
+    "mapping the real ones. 4, people map "
     "calibration areas completely. 5, people investigate local datasets such as registers and"
     " official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows "
     "from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry"
@@ -382,7 +409,8 @@ def quality_page() -> str:
     heads = {"bronze": "Bronze: every published atlas",
              "silver": "Silver: Bronze, plus local ground truth and leads mapped to "
                        "localize the model",
-             "gold": "Gold: Silver, plus installations below 400 m&sup2;, checked by people"}
+             "gold": "Gold: Silver, plus installations below 400 m&sup2; checked by people, "
+                     "and glint measured from space"}
     for tier in ("bronze", "silver", "gold"):
         out += [f"## {heads[tier]}", "", "| Criterion | What it means | Where it is set |",
                 "| --- | --- | --- |"]
@@ -397,8 +425,12 @@ def quality_page() -> str:
             "well. A very large outline is checked on the Sentinel-2 imagery the model saw as "
             "well as on recent high-resolution imagery, since a park built after the "
             "high-resolution capture shows only there; map the panels or the park's outline, "
-            "not the blob. The [lead mapping guide](contribute/leads.md) walks through a lead "
-            "file in JOSM.", "",
+            "not the blob. The largest outlines can be settled before anyone maps them, on the "
+            "country's [review pages](contribute/review.md): an outline judged not solar there "
+            "is checked and leaves the lead files, and one judged solar moves to the country's "
+            "confirmed-lead file, the first a mapper should open, and is checked once it is "
+            "mapped. The [lead mapping guide](contribute/leads.md) walks through the lead "
+            "files in JOSM.", "",
             "## How much to map: a third", "",
             "Mapping every lead does not pay: the real installations sit near the top of a "
             "lead file, which is sorted most promising first, and the bottom is mostly false "
@@ -422,8 +454,9 @@ def quality_page() -> str:
             "- **Bronze: the wheel is set up.** A model trained on the country's own "
             "OpenStreetMap solar detects arrays from space (station 1), and the atlas is "
             "published with its mapping leads and the areas to map (station 2).",
-            "- **Silver: the wheel has turned once.** People check a third of the leads and "
-            "map the real installations (station 3), and the model is retrained on what they mapped "
+            "- **Silver: the wheel has turned once.** People check a third of the leads, "
+            "judging the largest on the review pages and mapping the real installations "
+            "(station 3), and the model is retrained on what they mapped "
             "(station 6), so its next leads come from a model that has learned the country's "
             "own false alarms and missed arrays. The figures are checked against local "
             "ground truth: mapped installations, complete calibration areas (station 4) or a "
@@ -433,7 +466,8 @@ def quality_page() -> str:
             "mapped panel by panel (station 4), or a legally complete register (station 5), "
             "are what the small-installation estimate is fitted on and checked against. People "
             "then check the rooftop classifier's results directly, on cells drawn at random and "
-            "on its score for every building.", "",
+            "on its score for every building, and solar glint, caught from space, corroborates "
+            "the large installations and measures how their panels are mounted.", "",
             "Each further turn adds labels the model learns from and areas the estimates are "
             "fitted on, so a country moves up by being mapped. The first turn counts for good.",
             ""]

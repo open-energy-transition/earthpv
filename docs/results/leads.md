@@ -152,6 +152,15 @@ its 1,562 unreviewed blobs at the review sample's share real (see
 [India](india.md)); `scripts/oversize_review.py draw`, a step of every country's run, queues
 each blob for a verdict, largest first.
 
+**Judged outlines leave the queue (2026-11-19).** The verdicts given on the solar farm and
+large installation [review pages](../contribute/review.md) sort a country's lead files when
+they are made: an outline judged solar that OpenStreetMap still lacks moves to a third file,
+`<country>_pv_confirmed_leads.geojson`, largest first and whatever the lead screens say, and
+one judged not solar is left out of every file, so no mapper checks it twice. In Texas, whose
+blobs and large leads were all judged on 18 November, that takes the blob file from 844
+outlines to 4, the lead file from 2,963 to 2,124, and puts 134 judged installations (51 of
+them parks) at the head of the queue.
+
 **How much of a lead file is worth checking** (`scripts/lead_share.py`,
 `results/lead_share/`). The files are ranked, and the real installations sit near the top:
 

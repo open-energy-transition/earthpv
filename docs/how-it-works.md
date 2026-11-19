@@ -24,8 +24,8 @@ three; OpenStreetMap sits at the hub, because everything people map goes in ther
 back out as counted capacity and as training labels. Each turn leaves the map more complete,
 the models more local and the estimate better measured.
 
-![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.svg#only-light)
-![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people check the leads, judging the largest on review pages and mapping the real ones. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.svg#only-light)
+![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people check the leads, judging the largest on review pages and mapping the real ones. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
 ### Why the loop exists
 
@@ -84,13 +84,20 @@ nobody imaged are hatched, an instrument that has not been calibrated reads "not
 rather than zero, and the candidate calibration areas still to map are drawn on the map, a
 star on the one to start with.
 
-#### 3. Map the leads
+#### 3. Check the leads
 
-Mappers open each lead in the OpenStreetMap editor, compare it against the
-high-resolution layers, and either map the installation properly or discard the lead.
-Local mappers add what no imagery shows: which industrial estate this is, whether the roof
-belongs to a factory or a school, whether the array is net-metered. Leads carry no
-completeness rule ([Map the leads with JOSM](contribute/leads.md)).
+The largest outlines are judged first, on two review pages every country's run draws: one
+picture per outline from the imagery the model saw, for the solar farms above 10 ha and the
+large installations from 1 ha. A verdict counts in the atlas at the next rebuild, and it
+sorts the lead files: an outline judged solar that OpenStreetMap lacks moves to the
+country's confirmed-lead file, the first a mapper opens, and one judged not solar leaves the
+lead files ([Judge large installations](contribute/review.md)).
+
+Mappers then open the leads in the OpenStreetMap editor, confirmed ones first, compare each
+against the high-resolution layers, and either map the installation properly or discard the
+lead. Local mappers add what no imagery shows: which industrial estate this is, whether the
+roof belongs to a factory or a school, whether the array is net-metered. Leads carry no
+completeness rule ([Map the leads](contribute/leads.md)).
 
 #### 4. Map calibration areas
 

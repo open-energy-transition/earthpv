@@ -176,16 +176,20 @@ nav:
   # How the community adds the OpenStreetMap ground truth the atlases are calibrated on,
   # right after the atlases whose Silver/Bronze notes link here. contribute/index.md keeps
   # the old /contribute/ URL, which the atlas popups and the README link to.
+  # Ordered by the mapping flywheel's stages (contribute/index.md): check the leads (3),
+  # map calibration areas (4), share local data (5), then running the pipeline yourself.
   - Contribute Data:
       - contribute/index.md
-      - Build an atlas on your PC: contribute/new-atlas.md
+      - Judge large installations: contribute/review.md
+      - Map the leads: contribute/leads.md
+      - Map a calibration area: contribute/calibration-areas.md
       - Map with iD: contribute/id.md
       - Map with JOSM: contribute/josm.md
-      - Map the leads with JOSM: contribute/leads.md
-      - Judge large installations: contribute/review.md
       - Draw your own area: contribute/draw-area.md
       - Report and verify: contribute/report.md
       - Follow area activity: contribute/activity.md
+      - Share a local dataset: contribute/local-data.md
+      - Build an atlas on your PC: contribute/new-atlas.md
       - Register an area (maintainers): contribute/maintainers.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:

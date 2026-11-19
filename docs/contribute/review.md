@@ -5,7 +5,9 @@ up to date, every country's run makes two **review pages**: one picture of each 
 the model drew where OpenStreetMap has no solar, and a few keys to say what it is. A verdict
 takes a few seconds, needs no OpenStreetMap account, and changes the country's capacity
 directly. It is the quickest way to make an atlas more right where it matters most, at its
-largest installations.
+largest installations, and it is the first half of stage 3 of the
+[mapping flywheel](index.md): an outline you judge solar becomes a **confirmed lead**, the
+first thing a mapper is given to trace.
 
 | page | what it shows | what your verdict changes |
 |---|---|---|
@@ -88,15 +90,31 @@ pixi run earthpv density --aoi YOUR_AOI --districts
 # then the atlas, with the same command that built it
 ```
 
+Your verdicts also sort the country's lead files (below) the next time they are made: a step
+of every run after the atlas (`scripts/release_leads.py`). Maintainers publish them with
+`pixi run python scripts/release_leads.py --aoi YOUR_AOI --upload` and then
+`scripts/patch_atlas_leads.py` on the atlas, so the published files and the page's download
+card follow the review.
+
 `pixi run large-review status` and `pixi run blob-review status` show what is left per
 country. An outline you judged leaves the page the next time it is packaged.
 
 ## What happens to an outline you judged
 
+- **Judged solar: a confirmed lead.** Until someone maps it, it is in the country's
+  `<country>_pv_confirmed_leads.geojson`, largest first, the file the
+  [lead guide](leads.md) tells mappers to open first. A person's verdict outranks the lead
+  screens, so it stays there whatever its slope or model probability. It counts in the atlas
+  from your verdict once the country is recomputed; mapping it gives it its real shape.
+- **Judged not solar.** It leaves the lead and blob files for good, so no mapper checks it
+  again, and counts nothing.
+- **Unsure, or skipped.** It stays in the lead or blob file (marked `review_verdict =
+  unsure` if you pressed 3) and comes back on the next page.
 - **Mapped later.** Once someone maps it in OpenStreetMap, the map counts it and your verdict
   rests. Mapping a confirmed outline is still worth it: the map gives its real shape, and the
   country's next model learns from it ([map the leads](leads.md)).
 - **A new model run.** A new run numbers its outlines afresh, so a review belongs to the run it
   was drawn from; the next run starts a new page.
-- **Not solar.** Nothing in OpenStreetMap records a false alarm, so the verdict is the only
-  place that knowledge lives: keep the review files with the run.
+- **Not solar, on record.** Nothing in OpenStreetMap records a false alarm, so the verdict is
+  the only place that knowledge lives: keep the review files with the run. The country's
+  polygon release carries every verdict beside its outline (`review_verdict`).

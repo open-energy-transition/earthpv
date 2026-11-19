@@ -41,6 +41,22 @@ each file checked (`atlas.LEAD_SHARE_MIN`). `--resplit` splits files built befor
 (every lead in one file) in place, keeping their date, so a lead check made on them still
 names them.
 
+**A person's verdict turns an outline into a confirmed lead (2026-11-19).** The solar farm
+review (blobs) and the large installation review (leads from 10,000 m2 up to the cap) judge
+outlines on the imagery the model saw (scripts/oversize_review.py). Their verdicts, read from
+the review blocks of the country's calibration table (`review_table`, as `density` and
+scripts/release_polygons.py read them), sort the leads three ways. An outline judged solar
+that OpenStreetMap still lacks goes to `<aoi>_pv_confirmed_leads.geojson`, largest first:
+every one is solar, so it is the first file a mapper should open. A verdict outranks the
+lead screens, so a confirmed lead is kept whatever its slope, confidence or water history.
+An outline judged not solar (or bright roof) is left out of every file, since nobody should
+check it again; its verdict stays in review.csv and in the polygon release. Unsure and
+unjudged outlines stay in the lead and blob files, an unsure one marked `review_verdict =
+unsure`. The manifest counts each (`confirmed`, `judged_not_pv`), and `confirmed.mapped_since`
+counts the outlines judged solar that OpenStreetMap has gained since (no longer leads). After
+a review sitting: `apply`, `density`, the atlas, then `--aoi <aoi> --upload` here and
+scripts/patch_atlas_leads.py on the page.
+
 **Every atlas gets its files by default (owner, 2026-11-13).** scripts/run_country_compute.sh
 runs `--aoi <aoi> --upload` after `earthpv atlas`, then scripts/patch_atlas_leads.py on the page,
 so a new country's page links its leads from the start. A country needs a `SOURCES` entry only
@@ -58,6 +74,7 @@ kept its outlines above the cap apart); its manifest entry links those files.
     pixi run python scripts/release_leads.py --out <dir of a published release> --resplit
 
 Writes `<out>/<aoi>_pv_new_leads.geojson`, `<out>/<aoi>_pv_blob_leads.geojson`,
+`<out>/<aoi>_pv_confirmed_leads.geojson` (only where a person has judged a lead solar),
 `<out>/README.md`, `<out>/SHA256SUMS` and `configs/atlas_leads.json`, which
 `atlas.leads_release` reads into `totals.leads` and scripts/patch_atlas_leads.py adds to
 published pages.
@@ -77,6 +94,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -88,6 +106,7 @@ from earthpv.export import (LOWCONF_MAX_CONFIDENCE, STEEP_CAP_DEG,  # noqa: E402
                             STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG, WATER_EVER_WET_MIN,
                             lead_water_screen_enabled, low_confidence_lead_screen,
                             new_lead_mask, steep_lead_screen, water_lead_screen)
+from oversize_review import LARGE_MIN_M2  # noqa: E402
 
 REPO = "open-energy-transition/earthpv"
 MANIFEST = ROOT / "configs" / "atlas_leads.json"
@@ -117,8 +136,16 @@ SOURCES = {
     "pakistan": {},
     # Germany's national file carries the 52,946 OSM nodes the pre-cap file lacks; the
     # pre-cap file carries the ground outlines above 5 km2 the national file dropped.
-    "germany": {"osm": ["data/labels/germany_national_osm_solar.parquet",
-                        "data/labels/germany_national_osm_solar_PRE_ground_cap.parquet"]},
+    # The pre-cap file is gone (2026-11-13), so since 2026-11-19 Germany's leads are held to
+    # the candidates its 2026-11-01 files list (`keep_ids_from`, kept in
+    # data/leads_reference/): the national file alone would make leads of model outlines at
+    # the ground outlines above 5 km2 it dropped, and every lead in those files was declared
+    # checked (configs/atlas/germany.yaml). Its screens ran on that file, so the manifest
+    # carries that file's counts (`screened`).
+    "germany": {"osm": ["data/labels/germany_national_osm_solar.parquet"],
+                "screened": {"steep": 209, "lowconf": 2335},
+                "keep_ids_from": ["data/leads_reference/germany_20261101/germany_pv_new_leads.geojson",
+                                  "data/leads_reference/germany_20261101/germany_pv_blob_leads.geojson"]},
     # Nigeria's atlas is the v5 run; data/predictions/nigeria holds the losing checkpoint's.
     "nigeria": {"pred": "data/predictions_v5_nigeria/nigeria"},
     # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
@@ -156,7 +183,52 @@ FRANCE = {
 }
 COLUMNS = ["candidate_id", "rank_score", "confidence", "area_m2", "placement",
            "building_dist_m", "building_overlap_frac", "building_prior", "building_id",
-           "oversize", "slope_deg", "steep_review", "ever_wet_frac", "lon", "lat"]
+           "oversize", "slope_deg", "steep_review", "ever_wet_frac", "review_verdict",
+           "review_page", "lon", "lat"]
+# The calibration table's review blocks (scripts/oversize_review.py `apply`) and the page each
+# one comes from, as a lead file names it in `review_page`.
+REVIEW_BLOCKS = {"oversize_review": "solar_farm", "lead_review": "large_installation"}
+JUDGED_NOT_PV = ("not_pv", "bright_roof")
+
+
+def review_table(aoi: str, cands: gpd.GeoDataFrame) -> pd.DataFrame:
+    """A person's verdict per candidate, where the country's calibration table records a
+    review (`oversize_review`, `lead_review`): `review_verdict` is `pv`, `not_pv`,
+    `bright_roof` (not PV, a very bright roof) or `unsure`, and `review_page` the page it was
+    given on; both None for an outline nobody judged. Matched by `candidate_index` (a label
+    of the candidate file's own index, which the solar thermal filter left with gaps) and
+    checked by area, as `density.load_oversize_admission` does. A verdict on a candidate the
+    file no longer holds is skipped, unless it is `pv`, which is an error as in `density`."""
+    out = pd.DataFrame({"review_verdict": pd.Series(None, index=cands.index, dtype=object),
+                        "review_page": pd.Series(None, index=cands.index, dtype=object)})
+    table = ROOT / "configs" / "calibration" / f"{aoi}_candidate_precision.yaml"
+    if not table.exists():
+        return out
+    t = yaml.safe_load(table.read_text()) or {}
+    for key, page in REVIEW_BLOCKS.items():
+        block = t.get(key) or {}
+        if not block.get("review_csv"):
+            continue
+        r = pd.read_csv(ROOT / block["review_csv"])
+        r = r[r["verdict"].isin(["pv", "not_pv", "unsure"])]
+        known = r["candidate_index"].isin(cands.index)
+        if not known[r["verdict"] == "pv"].all():
+            raise ValueError(f"{aoi}: {block['review_csv']} judges solar a candidate the "
+                             "file lacks (another candidate file?)")
+        r = r[known]
+        got = cands.loc[r["candidate_index"], "area_m2"].to_numpy(float)
+        if not np.allclose(got, r["area_m2"].to_numpy(float), rtol=1e-6, atol=1.0):
+            raise ValueError(f"{aoi}: {block['review_csv']} describes another candidate file")
+        flag = r["flag"].fillna("") if "flag" in r else pd.Series("", index=r.index)
+        idx = r["candidate_index"].to_numpy()
+        out.loc[idx, "review_verdict"] = np.where(flag.eq("bright_roof"), "bright_roof",
+                                                  r["verdict"])
+        out.loc[idx, "review_page"] = page
+        n = r["verdict"].value_counts()
+        print(f"  {key}: {int(n.get('pv', 0) + n.get('not_pv', 0)):,} verdicts "
+              f"({int(n.get('pv', 0)):,} solar, {int(n.get('unsure', 0)):,} more unsure; "
+              f"{int((~known).sum())} on candidates no longer in the file)")
+    return out
 
 
 def _osm_as_of(frames: list[gpd.GeoDataFrame], paths: list[Path]) -> str:
@@ -181,6 +253,27 @@ def _page_data(page: Path) -> dict:
 def _write(gdf: gpd.GeoDataFrame, path: Path) -> None:
     path.unlink(missing_ok=True)
     gdf.to_file(path, driver="GeoJSON", layer_options={"COORDINATE_PRECISION": "7"})
+
+
+def write_confirmed(confirmed: gpd.GeoDataFrame, aoi: str, out: Path,
+                    mapped_since: int) -> dict | None:
+    """Write the outlines a person judged solar, largest first, to
+    `<aoi>_pv_confirmed_leads.geojson` and return the manifest's `confirmed` entry; None (and
+    no file) when there are none."""
+    path = out / f"{aoi}_pv_confirmed_leads.geojson"
+    if confirmed.empty:
+        path.unlink(missing_ok=True)
+        return None
+    confirmed = confirmed.sort_values("area_m2", ascending=False, kind="stable")
+    _write(confirmed, path)
+    page = confirmed["review_page"]
+    return {"file": path.name,
+            "url": f"https://github.com/{REPO}/releases/download/{TAG}/{path.name}",
+            "n": len(confirmed), "size_bytes": path.stat().st_size,
+            "n_solar_farm": int(page.eq("solar_farm").sum()),
+            "n_large_installation": int(page.eq("large_installation").sum()),
+            "area_m2": round(float(confirmed["area_m2"].sum()), 1),
+            "mapped_since": int(mapped_since)}
 
 
 def split_blobs(leads: gpd.GeoDataFrame, aoi: str, out: Path) -> dict:
@@ -217,6 +310,9 @@ def resplit(aoi: str, entry: dict, out: Path) -> dict:
 def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     pred = ROOT / src.get("pred", f"data/predictions/{aoi}")
     cands = gpd.read_parquet(pred / "candidates.parquet")
+    # Verdicts are keyed by the candidate file's own index, so they are read before the
+    # ranking below renumbers it.
+    cands = cands.join(review_table(aoi, cands))
     # export.run_export's ranking and numbering, call for call, so ids agree with it.
     sort_col = "rank_score" if "rank_score" in cands.columns else "confidence"
     cands = cands.sort_values(sort_col, ascending=False).reset_index(drop=True)
@@ -227,25 +323,40 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     mapped = gpd.GeoDataFrame(pd.concat([f[["geometry"]] for f in frames], ignore_index=True),
                               geometry="geometry", crs="EPSG:4326")
     mapped = mapped[mapped.geometry.notna() & ~mapped.geometry.is_empty]
-    leads = cands[new_lead_mask(cands, mapped, min_distance_m)].copy()
+    is_lead = np.asarray(new_lead_mask(cands, mapped, min_distance_m))
+    if "keep_ids_from" in src:
+        # Only candidates an earlier, checked lead file listed (same run, same numbering).
+        keep = set()
+        for f in src["keep_ids_from"]:
+            keep |= set(gpd.read_file(ROOT / f, columns=["candidate_id"])["candidate_id"])
+        is_lead &= cands["candidate_id"].isin(keep).to_numpy()
 
     regions = atlas._page_regions(aoi, pred / "density" / "regions.geoparquet")
     page = ROOT / PAGES.get(aoi, f"results/{aoi}_pv_evidence_atlas.html")
     shown = sorted(p["name"] for p in _page_data(page).get("provinces", []))
     if shown != sorted(map(str, regions.name)):
         raise ValueError(f"{aoi}: {pred} does not hold the regions {page.name} draws")
+    border = regions.geometry.union_all()
+    # Outlines judged solar that OpenStreetMap has gained since: the wheel turning.
+    judged_pv = cands[cands["review_verdict"].eq("pv").to_numpy() & ~np.asarray(is_lead)]
+    mapped_since = int(judged_pv.geometry.representative_point().within(border).sum())
+    leads = cands[is_lead].copy()
     rep = leads.geometry.representative_point()
-    inside = rep.within(regions.geometry.union_all()).to_numpy()
+    inside = rep.within(border).to_numpy()
     n_outside = int((~inside).sum())
     leads, rep = leads[inside].copy(), rep[inside]
+    # A person's solar verdict outranks every screen below: the screens stand in for a look.
+    sure = leads["review_verdict"].eq("pv").to_numpy()
     slope, steep_drop, steep_review = steep_lead_screen(leads)
+    steep_drop = np.asarray(steep_drop) & ~sure
     leads["slope_deg"], leads["steep_review"] = slope.round(1), steep_review
-    leads, rep = leads[~steep_drop].copy(), rep[~steep_drop]
-    lowconf = low_confidence_lead_screen(leads)
-    leads, rep = leads[~lowconf].copy(), rep[~lowconf]
+    leads, rep, sure = leads[~steep_drop].copy(), rep[~steep_drop], sure[~steep_drop]
+    lowconf = np.asarray(low_confidence_lead_screen(leads)) & ~sure
+    leads, rep, sure = leads[~lowconf].copy(), rep[~lowconf], sure[~lowconf]
     water = None
     if lead_water_screen_enabled(aoi):
         wet, wet_drop = water_lead_screen(leads)
+        wet_drop = np.asarray(wet_drop) & ~sure
         leads["ever_wet_frac"] = np.round(wet, 3)
         leads, rep = leads[~wet_drop].copy(), rep[~wet_drop]
         water = {"ever_wet_min": WATER_EVER_WET_MIN, "dropped": int(wet_drop.sum()),
@@ -259,16 +370,27 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
             leads[c] = leads[c].astype(float).round(1)
     leads = leads[[c for c in COLUMNS if c in leads.columns] + ["geometry"]]
 
+    # A person's verdict sorts what is left: solar to the confirmed file, not solar out of
+    # every file, unsure and unjudged to the lead and blob files as before.
+    verdict = leads["review_verdict"]
+    confirmed = write_confirmed(leads[verdict.eq("pv")], aoi, out, mapped_since)
+    no = verdict.isin(JUDGED_NOT_PV)
+    blob = leads["area_m2"].to_numpy(float) > MAX_CANDIDATE_M2
+    judged_not_pv = {"leads": int((no & ~blob).sum()), "blobs": int((no & blob).sum())}
+    leads = leads[~verdict.isin(("pv", *JUDGED_NOT_PV))]
+
     path = out / f"{aoi}_pv_new_leads.geojson"
     blobs = split_blobs(leads, aoi, out)
     export_file = pred / f"{aoi}_pv_new_leads.geojson"
     export_n = len(gpd.read_file(export_file, columns=[])) if export_file.exists() else None
-    print(f"  {aoi:13s} {len(leads) - blobs['n']:7,d} leads + {blobs['n']:,} blobs of "
-          f"{len(cands):7,d} candidates "
+    print(f"  {aoi:13s} {len(leads) - blobs['n']:7,d} leads + {blobs['n']:,} blobs + "
+          f"{confirmed['n'] if confirmed else 0:,} confirmed of {len(cands):7,d} candidates "
           f"({n_outside:,} outside the page's regions, {int(steep_drop.sum()):,} on "
           f"steep ground dropped; {int(steep_review.sum()):,} steep_review; "
           f"{int(lowconf.sum()):,} open-ground low-confidence dropped; "
-          f"{water['dropped'] if water else '-'} on ever-wet ground dropped; export file: "
+          f"{water['dropped'] if water else '-'} on ever-wet ground dropped; "
+          f"{judged_not_pv['leads']:,} leads and {judged_not_pv['blobs']:,} blobs judged not "
+          f"solar left out; {mapped_since:,} judged solar and mapped since; export file: "
           f"{export_n if export_n is not None else '-'}) -> {path.stat().st_size / 1e6:.1f} MB")
     return {
         "file": path.name,
@@ -280,24 +402,40 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
         "made": dt.date.today().isoformat(),
         "steep": {"slope_deg": STEEP_SLOPE_DEG, "max_area_m2": STEEP_MAX_AREA_M2,
                   "cap_deg": STEEP_CAP_DEG,
-                  "dropped": int(steep_drop.sum()), "review": int(steep_review.sum()),
+                  "dropped": src.get("screened", {}).get("steep", int(steep_drop.sum())),
+                  "review": int(steep_review.sum()),
                   "no_dem": int(np.isnan(slope).sum())},
         "lowconf": {"placement": "no_building", "max_confidence": LOWCONF_MAX_CONFIDENCE,
-                    "dropped": int(lowconf.sum())},
+                    "dropped": src.get("screened", {}).get("lowconf", int(lowconf.sum()))},
         **({"water": water} if water else {}),
         "blobs": blobs,
+        **({"confirmed": confirmed} if confirmed else {}),
+        "judged_not_pv": judged_not_pv,
     }
 
 
 README = """# EarthPV mapping leads, {date}
 
-Two GeoJSON files per country: solar arrays the EarthPV segmentation model outlined in
+Up to three GeoJSON files per country: solar arrays the EarthPV segmentation model outlined in
 Sentinel-2 imagery that lie more than {dist} m from every solar installation in OpenStreetMap
-when the file was made. `<country>_pv_new_leads.geojson` holds the leads up to {blob_m2} m2,
-most promising first; `<country>_pv_blob_leads.geojson` holds the very large outlines above
-that, largest first (see "Very large outlines" below). Each country's files come from the
-same model run as its published evidence atlas
+when the file was made. `<country>_pv_confirmed_leads.geojson`, where a country has one, holds
+the outlines a person has already judged solar on the review pages, largest first: map these
+first (see "Judged solar" below). `<country>_pv_new_leads.geojson` holds the other leads up to
+{blob_m2} m2, most promising first; `<country>_pv_blob_leads.geojson` holds the other very
+large outlines above that, largest first (see "Very large outlines" below). Each country's
+files come from the same model run as its published evidence atlas
 (https://open-energy-transition.github.io/earthpv/atlas/), which links them.
+
+**Judged solar: the confirmed leads.** Every country's run draws two review pages, one picture
+per outline from the imagery the model saw (Sentinel-2 as composited, its false colour, and
+Esri World Imagery with its capture date): the solar farm review for outlines above {blob_m2}
+m2 and the large installation review for leads from {large_m2} m2 up to that. A named person
+gives each one a verdict. Outlines judged solar that OpenStreetMap still lacks are in the
+confirmed file, whatever the screens below would say: each is a real installation waiting to
+be traced. `review_page` names the page it was judged on. Outlines judged not solar are left
+out of all three files, so nobody checks them twice; an outline judged unsure stays in the
+leads or blob file with `review_verdict = unsure`. The guide to judging is
+https://open-energy-transition.github.io/earthpv/contribute/review/.
 
 **These are leads, not data.** Every feature is an unverified outline drawn from 10 m pixels,
 typically about twice the area of the panels it found. Check each one against recent
@@ -357,10 +495,12 @@ Features in the leads file are sorted most promising first. Columns:
 | slope_deg | Copernicus GLO-90 terrain slope in degrees at the lead's point (empty off the DEM) |
 | steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees (and not above {steep_cap}): kept for a human, may be shadow on a slope or a mountain solar farm |
 | ever_wet_frac | share of the outline ever under water, 1984-2020 (only where the pans-and-ponds screen is on) |
+| review_verdict | `pv` in the confirmed file; `unsure` where a person looked on a review page and could not settle it; empty if nobody has judged it |
+| review_page | `solar_farm` or `large_installation`: the review page the verdict was given on |
 | lon, lat | a point inside the outline |
 
-| country | leads | blobs | steep leads left out | steep_review | open ground, low confidence, left out | pans and ponds left out | OpenStreetMap as of |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| country | confirmed | leads | blobs | judged not solar, left out | steep leads left out | steep_review | open ground, low confidence, left out | pans and ponds left out | OpenStreetMap as of |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 {rows}
 
 France's leads are a separate, audited release, its blobs in `france_pv_leads_oversize.geojson`: https://github.com/{repo}/releases/tag/france-osm-leads-2026-10-22
@@ -371,9 +511,9 @@ modified Copernicus Sentinel-2 data. Released under the ODbL like every EarthPV 
 
 
 def _assets(out: Path, entries) -> list[Path]:
-    """The lead and blob files of the manifest entries `entries`, in `out`."""
+    """The lead, blob and confirmed files of the manifest entries `entries`, in `out`."""
     return [out / (e[k]["file"] if k else e["file"])
-            for e in entries for k in (None, "blobs") if k is None or k in e]
+            for e in entries for k in (None, "blobs", "confirmed") if k is None or k in e]
 
 
 def country_name(aoi: str) -> str:
@@ -404,8 +544,9 @@ def main() -> int:
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
 
     built = {a: e for a, e in manifest["aois"].items() if a != "france"}
-    rows = "\n".join(f"| {country_name(a)} | {e['n']:,} | "
-                     f"{e.get('blobs', {}).get('n', 0):,} | "
+    rows = "\n".join(f"| {country_name(a)} | {e.get('confirmed', {}).get('n', 0):,} | "
+                     f"{e['n']:,} | {e.get('blobs', {}).get('n', 0):,} | "
+                     f"{sum(e.get('judged_not_pv', {}).values()):,} | "
                      f"{e.get('steep', {}).get('dropped', 0):,} | "
                      f"{e.get('steep', {}).get('review', 0):,} | "
                      f"{e.get('lowconf', {}).get('dropped', 0):,} | "
@@ -416,6 +557,7 @@ def main() -> int:
     (args.out / "README.md").write_text(README.format(
         date=made[-1] if args.resplit else dt.date.today().isoformat(),
         dist=int(args.min_distance_m), rows=rows, repo=REPO, blob_m2=f"{MAX_CANDIDATE_M2:,.0f}",
+        large_m2=f"{LARGE_MIN_M2:,.0f}",
         steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}",
         steep_cap=f"{STEEP_CAP_DEG:g}", lowconf_max=f"{LOWCONF_MAX_CONFIDENCE:g}",
         water_pct=f"{100 * WATER_EVER_WET_MIN:g}",

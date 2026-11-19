@@ -70,15 +70,19 @@ EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.htm
 # a record the Downloads card states).
 # Gold also needs the rooftop classifier checked by people, by random validation and point
 # data inspection (owner, 2026-11-02), which no file on disk can show: `validation.score: gold`
-# in the country's config declares it, and `derive_validation_score` stops at Silver. The full
-# list of criteria is docs/atlas-quality-levels.md (scripts/build_atlas_pages.py writes it).
+# in the country's config declares it, and `derive_validation_score` stops at Silver. And it
+# needs solar glint measured on a share of the country's large installations (owner,
+# 2026-11-19; `glint_surveyed`, `GLINT_SHARE_MIN`): a declared Gold shows Silver until then.
+# The full list of criteria is docs/atlas-quality-levels.md (scripts/build_atlas_pages.py
+# writes it).
 VALIDATION_TIERS = {
     "gold": (
         "Gold",
         "Fully validated and trained using OpenStreetMap imagery and labels. Covers "
         "installations above and below the 400 m² satellite floor, with the rooftop "
-        "classifier checked by people on random cells and point data. Enough mapping leads "
-        "mapped in OpenStreetMap to localize the model.",
+        "classifier checked by people on random cells and point data, and solar glint "
+        "measured on a share of the large installations. Enough mapping leads mapped in "
+        "OpenStreetMap to localize the model.",
     ),
     "silver": (
         "Silver",
@@ -240,7 +244,9 @@ def reconstruct_imagery_dates(aoi: str, timeout_s: int = 1800) -> dict | None:
 
 def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     """The AOI's mapping-lead file on GitHub: segmentation candidates more than
-    `min_distance_m` from any OSM solar feature, from the run behind this atlas.
+    `min_distance_m` from any OSM solar feature, from the run behind this atlas, with its blob
+    file and, where a person has judged outlines on the review pages, its confirmed file
+    (outlines judged solar) and the count of those judged not solar and left out.
     scripts/release_leads.py builds the files and writes the manifest; the page links the
     file rather than embedding it (India's is 91 MB). None when the AOI has no entry."""
     if not path.exists():
@@ -249,7 +255,8 @@ def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     if not e:
         return None
     return {k: e[k] for k in ("url", "file", "n", "size_bytes", "osm_as_of", "min_distance_m",
-                              "made", "note", "steep", "lowconf", "water", "blobs") if k in e}
+                              "made", "note", "steep", "lowconf", "water", "blobs", "confirmed",
+                              "judged_not_pv") if k in e}
 
 
 def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
@@ -324,6 +331,51 @@ LEAD_RULE_SUB = {
     "leads_retrained": "Leads checked; the model is not<br>yet retrained on them.",
 }
 
+# Gold also needs solar glint measured from space on a share of the country's large
+# installations (owner, 2026-11-19): an instrument independent of the segmentation model and
+# of the mappers, which corroborates the installations that carry most of the capacity and
+# fits their panel pose. The population is the installations of `GLINT_MIN_AREA_M2` (1 ha, the
+# review pages' "large") and up mapped in OpenStreetMap, dissolved as the atlas counts them;
+# one is MEASURED when a glint survey (scripts/glint_pose_survey.py) read at least
+# `GLINT_MIN_CLEAR` clear Sentinel-2 scenes over it. Whether a pose then fits is physics
+# (latitude, season, tilt), so it is reported, never required. Enough: a third of them (as the
+# lead rule asks), never fewer than `GLINT_MIN_N` (100, a detection share to about +-0.08) or
+# all of them where a country has fewer, and `GLINT_ENOUGH_N` (1,000, about a day of
+# Planetary Computer reads) where a third would be more, drawn as a census or at random. A
+# declaration in configs/atlas/<aoi>.yaml (`validation.glint_survey`), whose numbers
+# scripts/glint_coverage.py computes; like `retrained_on_leads` it does not lapse.
+GLINT_MIN_AREA_M2 = 10_000.0
+GLINT_MIN_CLEAR = 10
+GLINT_SHARE_MIN = 1 / 3
+GLINT_MIN_N = 100
+GLINT_ENOUGH_N = 1_000
+GLINT_RULE_SUB = "Solar glint not yet measured on<br>enough of its large installations."
+
+
+def glint_required(eligible: int) -> int:
+    """How many of `eligible` large installations a Gold country must have measured."""
+    if eligible <= 0:
+        return 0
+    third = -(-eligible // 3)  # ceil(eligible * GLINT_SHARE_MIN)
+    return min(eligible, max(min(GLINT_MIN_N, eligible), min(third, GLINT_ENOUGH_N)))
+
+
+def glint_surveyed(aoi: str) -> dict:
+    """The country's glint declaration (`validation.glint_survey`) and whether it meets the
+    Gold rule (`met`): measured >= `glint_required(eligible)` on the `GLINT_MIN_AREA_M2`
+    population."""
+    cfg = atlas_config.load(aoi)
+    out = {"survey": cfg.glint_survey, "eligible": cfg.glint_eligible,
+           "measured": cfg.glint_measured, "min_area_m2": cfg.glint_min_area_m2,
+           "by": cfg.glint_by, "date": cfg.glint_date, "note": cfg.glint_note}
+    out["required"] = (glint_required(cfg.glint_eligible)
+                       if cfg.glint_eligible is not None else None)
+    out["met"] = bool(cfg.glint_survey and cfg.glint_eligible is not None
+                      and cfg.glint_measured is not None
+                      and (cfg.glint_min_area_m2 or GLINT_MIN_AREA_M2) == GLINT_MIN_AREA_M2
+                      and cfg.glint_measured >= out["required"])
+    return out
+
 
 def lead_rule_gaps(aoi: str) -> list[str]:
     """The keys of `LEAD_RULE_GAPS` the AOI has not met: empty when a page may show the tier
@@ -335,9 +387,12 @@ def lead_rule_gaps(aoi: str) -> list[str]:
 
 
 def lead_rule_sub(aoi: str, earned: str) -> str:
-    """The badge's sub-line for a page shown as Bronze although its calibration earns
-    `earned`: the earned tier, then what is missing."""
-    gaps = lead_rule_gaps(aoi) or ["leads_mapped"]
+    """The badge's sub-line for a page shown below the tier its calibration earns: the
+    earned tier, then what is missing (the lead rule first, then Gold's glint rule)."""
+    gaps = lead_rule_gaps(aoi)
+    if not gaps and earned == "gold" and not glint_surveyed(aoi)["met"]:
+        return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>{GLINT_RULE_SUB}"
+    gaps = gaps or ["leads_mapped"]
     return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>{LEAD_RULE_SUB[gaps[0]]}"
 
 
@@ -720,16 +775,22 @@ def earned_validation_score(aoi: str, derived: str, override: str | None = None)
 
 
 def shown_validation_score(aoi: str, earned: str) -> str:
-    """The tier a page shows: the earned one, or Bronze for a Gold or Silver whose leads have
-    not yet been mapped to localize the model (`leads_retrained`)."""
-    return earned if earned == "bronze" or not lead_rule_gaps(aoi) else "bronze"
+    """The tier a page shows: the earned one; Bronze for a Gold or Silver whose leads have not
+    yet been mapped to localize the model (`leads_retrained`); Silver for a Gold whose large
+    installations have not had glint measured on enough of them (`glint_surveyed`)."""
+    if earned != "bronze" and lead_rule_gaps(aoi):
+        return "bronze"
+    if earned == "gold" and not glint_surveyed(aoi)["met"]:
+        return "silver"
+    return earned
 
 
 def resolve_validation_badge(aoi: str, derived: str, override: str | None = None) -> str:
     """The badge an atlas carries: the earned tier (`earned_validation_score`), shown as
-    Bronze until a share of the leads is mapped and the model has been retrained on them
-    (`shown_validation_score`; an explicit override is capped too, since that is a
-    requirement, not a judgement). The config's sub-line is used only when its own tier is
+    Bronze until a share of the leads is mapped and the model has been retrained on them, and
+    a Gold as Silver until glint is measured on enough of its large installations
+    (`shown_validation_score`; an explicit override is capped too, since those are
+    requirements, not judgements). The config's sub-line is used only when its own tier is
     the one shown."""
     cfg = atlas_config.load(aoi)
     earned = earned_validation_score(aoi, derived, override)

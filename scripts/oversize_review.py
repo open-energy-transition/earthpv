@@ -43,6 +43,12 @@ shows no model score, and nothing from an earlier verdict, so a second reviewer 
 `apply` reports agreement. `review.geojson` holds the same outlines for JOSM. The review is a
 human reading of imagery: record who reviewed it in `--reviewer`.
 
+**Verdicts become mapping leads (2026-11-19).** scripts/release_leads.py reads the review
+blocks `apply` writes: an outline judged solar that OpenStreetMap still lacks goes to the
+country's `<aoi>_pv_confirmed_leads.geojson`, the first file a mapper opens, and one judged not
+solar leaves the lead and blob files. Re-run it (`--aoi <aoi> --upload`, then
+scripts/patch_atlas_leads.py) after the atlas whenever a sitting is applied.
+
 **A verdict names one candidate file.** An outline judged and then mapped in OpenStreetMap
 leaves the pool and is counted from the map (no error, `apply` reports it). A new model run
 renumbers the candidates, so `apply` and `density` refuse the old review; `draw --redraw` starts
@@ -386,8 +392,11 @@ def cmd_apply(a) -> int:
         print(f"{len(gone)} reviewed outlines are mapped since ({len(mapped_pv)} judged solar): "
               "the map counts those, not the verdict")
     write_hub()
-    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas. `package` drops "
-          "the judged outlines from the page.")
+    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas, then "
+          f"`scripts/release_leads.py --aoi {a.aoi} --upload` and scripts/patch_atlas_leads.py, "
+          "which put the outlines judged solar in the country's confirmed-lead file for mappers "
+          "and take those judged not solar out of its lead files. `package` drops the judged "
+          "outlines from the page.")
     return 0
 
 
@@ -441,8 +450,11 @@ def _apply_large(a, rev, gone, prior: dict) -> int:
     if len(gone):
         print(f"{len(gone)} reviewed leads are mapped since: the map counts those, not the verdict")
     write_hub()
-    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas. `package` drops "
-          "the judged leads from the page.")
+    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas, then "
+          f"`scripts/release_leads.py --aoi {a.aoi} --upload` and scripts/patch_atlas_leads.py, "
+          "which put the outlines judged solar in the country's confirmed-lead file for mappers "
+          "and take those judged not solar out of its lead files. `package` drops the judged "
+          "leads from the page.")
     return 0
 
 
@@ -713,7 +725,9 @@ __ROWS__
 you export it and run<br>
 <code>pixi run __TASK__ apply --aoi &lt;country&gt; --reviewer "&lt;name&gt;" --verdicts
 &lt;the export&gt;</code><br>
-then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atlas.</p>
+then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atlas, and
+<code>scripts/release_leads.py --aoi &lt;country&gt; --upload</code>: outlines judged solar become
+the country's confirmed leads for mappers, and those judged not solar leave its lead files.</p>
 </body></html>
 """
 

@@ -37,7 +37,7 @@ hide:
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
   <p><strong>This Bronze atlas is not yet calibrated or verified.</strong> It counts only mapped installations and arrays of about 400 m&sup2; and up, so every figure is a floor.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a></p>
+  <p><a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute data: map a calibration area &rarr;</a></p>
   <button class="atlas-tier-close" type="button" aria-label="Close this notice" title="Close" hidden>&times;</button>
 </div>
 <iframe src="../assets/interactive/zambia_pv_evidence_atlas.html" title="Zambia PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>

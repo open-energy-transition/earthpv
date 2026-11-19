@@ -21,14 +21,17 @@ title: Germany
 # solar). The lead rule also asks for the model retrained on that mapping (atlas.leads_retrained):
 # the owner chose to retrain first (2026-11-13), so the page shows Bronze until that model is
 # named under `retrained_on_leads` as `model:`.
+# The 2026-11-19 lead file (review verdicts sort the files) holds the same 14,535 leads,
+# candidate for candidate; its 581 blobs left the blob file, 149 judged solar for the
+# confirmed file and 432 judged not solar, so every lead in it was in the file checked.
 validation:
   score: silver
   note: "Register-validated above and<br>below 400&nbsp;m&sup2;."
   leads_checked:
-    made: "2026-11-01"
+    made: "2026-11-19"
     by: owner
     date: "2026-11-13"
-    note: "every lead (14,535) and every blob (581) of the 2026-11-01 file, declared checked by the owner on 2026-11-13; the blob verdicts are in results/germany_oversize_review/"
+    note: "every lead (14,535) and every blob (581) of the 2026-11-01 file, declared checked by the owner on 2026-11-13; the blob verdicts are in results/germany_oversize_review/. The 2026-11-19 file holds the same 14,535 leads, and its blobs are now 149 confirmed leads and 432 left out"
   retrained_on_leads:
     leads: "2026-11-01"
     share: 1.0

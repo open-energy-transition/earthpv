@@ -62,6 +62,14 @@ silently drop the section it was meant to fill):
         by: owner                          # who declared it
         date: "2026-11-01"                 # when
         note: "..."                        # optional: how many leads, which OSM pull
+      glint_survey:                        # Gold: glint measured on the large installations
+        survey: france                     # glint_pose_survey.py --name, or a summary.csv path
+        eligible: 1612                     # installations >= 1 ha mapped in OpenStreetMap
+        measured: 1490                     # of those, read on >= 10 clear scenes
+        min_area_m2: 10000                 # the population's floor; default 10,000
+        by: owner                          # who declared it
+        date: "2026-11-19"                 # when
+        note: "..."                        # optional: which OSM pull, census or sample
     start_here: yafi_pv2_calib_1km         # the candidate to map first, drawn as a star
     map_view: [-9.3, 35.1, 4.4, 43.8]      # [west, south, east, north] the map opens on
 
@@ -98,6 +106,13 @@ file. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier
 the retrain still to come: the page stays Bronze, and its badge and banner name the retrain
 as what is missing.
 
+`validation.glint_survey` is Gold's third requirement (owner, 2026-11-19): solar glint
+measured from space on a share of the country's installations of 1 ha and more mapped in
+OpenStreetMap (`atlas.glint_required`: a third, never fewer than 100 or all where there are
+fewer, 1,000 where a third would be more). scripts/glint_coverage.py computes `eligible` and
+`measured` from a survey and prints the block. Without it a Gold page shows Silver
+(`atlas.glint_surveyed`); like `retrained_on_leads` it does not lapse.
+
 `validation.leads_checked` records that every lead in the country's current lead file has a
 human verdict, naming the file by its `made` date; the Downloads card says so. From
 2026-10-31 to 2026-11-01 it was a requirement of Silver and Gold.
@@ -128,7 +143,8 @@ NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
              "validation", "start_here", "map_view"}
-_VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads"}
+_VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads", "glint_survey"}
+_GLINT_KEYS = {"survey", "eligible", "measured", "min_area_m2", "by", "date", "note"}
 _LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
 _RETRAINED_KEYS = {"leads", "share", "blobs_share", "model", "by", "date", "note"}
 _SCORES = {"gold", "silver", "bronze"}
@@ -170,6 +186,15 @@ class AtlasConfig:
     retrained_by: str = ""
     retrained_date: str = ""
     retrained_note: str = ""
+    # `validation.glint_survey`: a glint survey of the large installations, how many were
+    # eligible and how many measured (Gold, owner 2026-11-19). Empty: not yet.
+    glint_survey: str = ""
+    glint_eligible: int | None = None
+    glint_measured: int | None = None
+    glint_min_area_m2: float | None = None
+    glint_by: str = ""
+    glint_date: str = ""
+    glint_note: str = ""
     start_here: str = ""
     # `map_view`: [west, south, east, north] the map opens on; empty: the whole country.
     map_view: tuple = ()
@@ -374,6 +399,26 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1:
             _fail(aoi, f"`validation.retrained_on_leads.{k}` must be a share between 0 and 1")
         shares[k] = float(v)
+    glint = val.get("glint_survey") or {}
+    if not isinstance(glint, dict):
+        _fail(aoi, "`validation.glint_survey` must be a mapping")
+    unknown = set(glint) - _GLINT_KEYS
+    if unknown:
+        _fail(aoi, f"unknown validation.glint_survey key(s) {sorted(unknown)}; "
+                   f"expected {sorted(_GLINT_KEYS)}")
+    if glint and not all(glint.get(k) not in (None, "") for k in
+                         ("survey", "eligible", "measured", "by", "date")):
+        _fail(aoi, "`validation.glint_survey` needs `survey`, `eligible`, `measured`, `by` "
+                   "and `date`")
+    for k in ("eligible", "measured"):
+        v = glint.get(k)
+        if v is not None and (isinstance(v, bool) or not isinstance(v, int) or v < 0):
+            _fail(aoi, f"`validation.glint_survey.{k}` must be a count")
+    if glint and glint["measured"] > glint["eligible"]:
+        _fail(aoi, "`validation.glint_survey.measured` exceeds `eligible`")
+    floor = glint.get("min_area_m2")
+    if floor is not None and (isinstance(floor, bool) or not isinstance(floor, (int, float))):
+        _fail(aoi, "`validation.glint_survey.min_area_m2` must be a number")
 
     return AtlasConfig(
         aoi=aoi,
@@ -398,6 +443,13 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         retrained_by=str(retrained.get("by") or "").strip(),
         retrained_date=str(retrained.get("date") or "").strip(),
         retrained_note=str(retrained.get("note") or "").strip(),
+        glint_survey=str(glint.get("survey") or "").strip(),
+        glint_eligible=glint.get("eligible"),
+        glint_measured=glint.get("measured"),
+        glint_min_area_m2=float(floor) if floor is not None else None,
+        glint_by=str(glint.get("by") or "").strip(),
+        glint_date=str(glint.get("date") or "").strip(),
+        glint_note=str(glint.get("note") or "").strip(),
         start_here=str(raw.get("start_here") or "").strip(),
         map_view=_parse_map_view(aoi, raw.get("map_view")),
         path=path,

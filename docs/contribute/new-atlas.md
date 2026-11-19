@@ -214,7 +214,7 @@ the test, which took a few hours on the same card. Mapping is what makes that po
 
 1. [Map the leads](leads.md) from step 5 in OpenStreetMap. They count at the next rebuild, and they
    become training examples.
-2. [Map a calibration area](index.md) completely. That is what lets the atlas estimate the small
+2. [Map a calibration area](calibration-areas.md) completely. That is what lets the atlas estimate the small
    rooftop systems it cannot see directly.
 3. [Retrain on your own labels](../reproduce.md#step-5-retrain-in-domain) and draw the atlas again.
 

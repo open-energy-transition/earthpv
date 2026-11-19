@@ -1,11 +1,21 @@
 # Map the leads with JOSM
 
-Every country's atlas on the [Countries](../atlas.md) tab links two files of **mapping
-leads**: places where the segmentation model outlined a solar array in Sentinel-2 imagery
-more than 100 m from every solar installation in OpenStreetMap when the file was made. Most
-are arrays of 400 m<sup>2</sup> and more, the size the model is trained and measured on:
-factory and warehouse roofs, ground-mounted parks, large pump arrays. The outlines above
-100,000 m<sup>2</sup> (10 ha) are in a file of their own, the **blob file** (below).
+Every country's atlas on the [Countries](../atlas.md) tab links up to three files of
+**mapping leads**: places where the segmentation model outlined a solar array in Sentinel-2
+imagery more than 100 m from every solar installation in OpenStreetMap when the file was
+made. Most are arrays of 400 m<sup>2</sup> and more, the size the model is trained and
+measured on: factory and warehouse roofs, ground-mounted parks, large pump arrays.
+
+| file | what is in it | order |
+| --- | --- | --- |
+| `<country>_pv_confirmed_leads.geojson` | outlines a person has already judged solar on the country's [review pages](review.md), which OpenStreetMap does not have yet | largest first |
+| `<country>_pv_new_leads.geojson` | the other leads up to 100,000 m<sup>2</sup> (10 ha) | most promising first |
+| `<country>_pv_blob_leads.geojson` | the other outlines above 10 ha, the **blobs** (below) | largest first |
+
+**Start with the confirmed file.** Every outline in it is a real installation: someone has
+already looked at it on the imagery the model saw and on Esri's, so all that is left is to
+trace it. A country has one once its review pages have been judged. Outlines a person judged
+not solar are in none of the files, so nobody checks them twice.
 
 Mapping them does two things. The next time the country's atlas is rebuilt, each
 installation you add is counted as hand-mapped solar. And the next time the country's model
@@ -15,11 +25,11 @@ from exactly the landscape the model has to work in. Mapped leads become labels,
 make a better model, and the better model finds the next leads
 ([how it works](../how-it-works.md#workflow)).
 
-Unlike a [calibration area](index.md#the-one-rule-map-everything-inside-the-line), leads
+Unlike a [calibration area](calibration-areas.md#the-one-rule-map-everything-inside-the-line), leads
 come with no completeness rule: map as many as you like and stop when you want.
 
-**How far to go: about a third, from the top.** Checking every lead does not pay. The file is
-sorted most promising first, and the real installations sit near the top: where people have
+**How far to go: about a third, from the top.** Checking every lead does not pay. The
+confirmed file is worth finishing; the lead file is sorted most promising first, and the real installations sit near the top: where people have
 worked through a lead file, the top third held more than two thirds of the leads they went
 on to map in Pakistan and nearly nine in ten in Yemen. Below it only 2 to 4 leads in 100
 were solar, and the small ones are mostly false alarms. So start at the top and work down. When about a third
@@ -46,14 +56,14 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 
 1. Open the country's atlas from the [Countries](../atlas.md) tab and scroll to **Download
    the data behind this atlas**. The first card, *Mapping leads: solar arrays the model found
-   that OpenStreetMap does not have yet*, links the country's two files,
-   `<country>_pv_new_leads.geojson` and `<country>_pv_blob_leads.geojson`, and their release
-   notes.
+   that OpenStreetMap does not have yet*, links the country's files (the confirmed file first,
+   where there is one, then `<country>_pv_new_leads.geojson` and
+   `<country>_pv_blob_leads.geojson`) and their release notes.
 2. Note the date on the card. Leads are checked against OpenStreetMap as of that day, so an
    installation mapped since can still be in the file; continuous download (step 5) shows
    you when it is.
-3. The leads file is sorted most promising first, the blob file largest first. JOSM shows
-   each lead's properties as tags:
+3. The leads file is sorted most promising first, the confirmed and blob files largest
+   first. JOSM shows each lead's properties as tags:
 
 | property | what it tells you |
 | --- | --- |
@@ -66,6 +76,8 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 | `slope_deg` | the terrain slope at the lead, in degrees (Copernicus 90 m elevation model) |
 | `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg; (up to 30&deg;): look at the terrain as well as the outline (below) |
 | `ever_wet_frac` | share of the outline ever under water since 1984 (only in countries with the pans-and-ponds screen) |
+| `review_verdict` | `pv` in the confirmed file; `unsure` where a reviewer looked and could not settle it on Sentinel-2 and Esri, so try other imagery layers; empty if nobody has judged it |
+| `review_page` | the review page the verdict was given on: `solar_farm` (above 10 ha) or `large_installation` (1 to 10 ha) |
 | `lon`, `lat` | a point inside the outline |
 
 **Steep ground.** Shaded hillsides, cliff edges, gullies and the shadows under escarpments
@@ -95,13 +107,23 @@ the high-resolution layers, for example in the
 [Copernicus Browser](https://browser.dataspace.copernicus.eu/): a park built after the
 high-resolution capture shows only there. If it is a park, map the park's outline or its
 panel blocks from the high-resolution imagery, never the blob. If the high-resolution imagery
-is older than the park, say so in an issue instead of mapping it.
+is older than the park, say so in an issue instead of mapping it. A blob someone has already
+judged on the [solar farm review](review.md) is no longer in the blob file: solar, it is in
+the confirmed file; not solar, it is gone.
 
 Large countries have large files: India's holds about 62,000 leads (60 MB) and 1,637 blobs.
 Work one region at a time (step 3). France's leads are a separate,
 [audited release](https://github.com/open-energy-transition/earthpv/releases/tag/france-osm-leads-2026-10-22)
 with priority tiers and one file per d&eacute;partement; its blobs are
 `france_pv_leads_oversize.geojson`.
+
+### A few leads in iD
+
+For a handful of leads, the confirmed file of a small country for instance, the browser
+editor is enough. Download the file, open [iD](id.md) over the country, and drag the
+`.geojson` onto the map (or load it under *Map Data*, *Custom Map Data*). The leads draw as
+an overlay iD never uploads; click one to read its properties. Zoom to each in turn and map
+it as in step 6 below. iD has no to-do list, so for a whole lead file use JOSM.
 
 ## 2. Set up JOSM and the three plugins
 
@@ -207,7 +229,9 @@ For each lead, which the Todo list zooms to:
    [Map with JOSM, step 3](josm.md#3-check-the-imagery-and-add-more-layers): Esri World
    Imagery, Esri World Imagery (Clarity), Bing, Mapbox Satellite and any national layer. One
    layer may predate an installation that another shows.
-2. **Decide what it is.**
+2. **Decide what it is.** A lead from the confirmed file has already been judged solar,
+   so the question there is only where the panels are; if no layer shows them, the
+   installation is newer than the imagery: leave it and say so in an issue.
     - **Already in OpenStreetMap**, mapped after the file was made: nothing to do.
     - **Not solar**: nothing to do. Do not map the lead, and do not change anything else to
       "explain" it.
@@ -265,7 +289,9 @@ As in [Map with JOSM, step 6](josm.md#6-validate-and-upload), with three differe
   resolve them from 10 m pixels, so the large installations are the ones that teach it; the
   small ones still count in the atlas.
 - **The false alarms.** Nothing in OpenStreetMap records a lead you judged not solar, so say
-  how far down the file you got in an issue, as above. If a whole kind of lead is wrong where
+  how far down the file you got in an issue, as above. (A verdict given on a
+  [review page](review.md) is recorded with the run, so those outlines leave the lead files by
+  themselves.) If a whole kind of lead is wrong where
   you map, greenhouses or a particular roof material, say that too in an
   [issue](https://github.com/open-energy-transition/earthpv/issues): it is the cheapest way
   to tell the next model what to ignore.

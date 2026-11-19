@@ -1,227 +1,195 @@
 # Contribute data
 
-EarthPV estimates how much solar is installed in a country, and the ground truth behind
-those numbers is OpenStreetMap: solar panels that volunteers have traced from aerial
-imagery. Every panel you add makes the estimate better, and you can do it from your
-browser. No coding, no data download, no install if you use iD.
-
-![A JOSM window over eastern Lahore. Thousands of small yellow polygons, one per mapped rooftop PV installation, fill two neighbourhoods so densely that the street grid shows through them, and the mapped area stops sharply along a ring road and a railway line, beyond which identical-looking suburbs carry almost no yellow.](../assets/figures/josm-calibration-region-lahore.jpg)
-
-*A finished calibration area in Lahore. Inside the boundary every visible panel is mapped;
-outside it nothing is, and the two look the same on imagery. That guarantee is what makes
-an area useful, and it stops exactly at the line.*
+EarthPV estimates how much solar each country has installed, and the ground truth behind
+those numbers is OpenStreetMap: solar panels that people have traced from aerial imagery.
+The model finds candidates in free satellite imagery; people decide what they are. This page
+shows how the two work together, the **mapping flywheel**, where you come in, and how each
+turn moves a country's atlas from Bronze to Gold. None of it needs coding, and most of it
+needs nothing but a browser.
 
 ## The mapping flywheel
 
-EarthPV is not mapped once and left. Each country turns a wheel of six stations, and every
-turn starts from a better map than the last. The model does three of them: it detects solar
-in free Sentinel-2 imagery, publishes the country's atlas with its leads and the areas still
-to map, and is retrained and recalibrated on what people found. **You come in at the other
-three**, and whatever you map goes through OpenStreetMap at the hub: it is counted in the
-next atlas, and the next model learns from it.
+![One turn of the mapping flywheel, drawn as six stage cards stacked from top to bottom, with an arrow on the left running from the last back to the first, labelled each turn starts from a more complete map and a more local model. 1, Detect from space, done by the model: the country's own model reads dry-season Sentinel-2 imagery and outlines every array of about 400 square metres and up, classifiers score the roofs and farm plots below that size, and solar glint across the scene archive confirms the larger installations; it hands on model outlines of every size and builds Bronze and Gold. 2, Publish the atlas, done by the model: Verified and Best capacity per 0.1 degree cell with a 90 percent range, the lead files and calibration areas to map; it builds Bronze. 3, Check the leads, done by people, in two parts. First, judge on a review page, on your own PC: one picture per outline of 1 hectare and up, keys 1 solar, 2 not solar, 3 unsure, 4 bright roof; the verdicts are counted at the next rebuild, shown by a dashed amber arrow straight back to stage 2, and outlines judged solar go into the confirmed-lead file. Second, map in JOSM or iD: confirmed leads first, then the lead file from the top and the blobs largest first. Stage 3 hands on a third of each lead file checked and builds Silver. 4, Map calibration areas, done by people in iD or JOSM: every visible panel inside a 1 to 3 kilometre box; it builds Silver and Gold. 5, Find local datasets, done by people in a browser: a register, statistics or a study, drawn beside the atlas, and a complete register calibrates it; it builds Gold. 6, Retrain and recalibrate, done by the model and a maintainer: the model is fine-tuned again on the country's OpenStreetMap solar and complete areas refit the small-installation estimate, which people then check on random cells; it builds Silver and Gold. On the right, a tall OpenStreetMap panel receives teal arrows marked mapped from stage 3's mapping and from stage 4, and sends teal arrows out to stage 2, marked counted, and to stage 6, marked labels.](../assets/figures/mapping_flywheel_stages.svg#only-light)
+![One turn of the mapping flywheel, drawn as six stage cards stacked from top to bottom, with an arrow on the left running from the last back to the first, labelled each turn starts from a more complete map and a more local model. 1, Detect from space, done by the model: the country's own model reads dry-season Sentinel-2 imagery and outlines every array of about 400 square metres and up, classifiers score the roofs and farm plots below that size, and solar glint across the scene archive confirms the larger installations; it hands on model outlines of every size and builds Bronze and Gold. 2, Publish the atlas, done by the model: Verified and Best capacity per 0.1 degree cell with a 90 percent range, the lead files and calibration areas to map; it builds Bronze. 3, Check the leads, done by people, in two parts. First, judge on a review page, on your own PC: one picture per outline of 1 hectare and up, keys 1 solar, 2 not solar, 3 unsure, 4 bright roof; the verdicts are counted at the next rebuild, shown by a dashed amber arrow straight back to stage 2, and outlines judged solar go into the confirmed-lead file. Second, map in JOSM or iD: confirmed leads first, then the lead file from the top and the blobs largest first. Stage 3 hands on a third of each lead file checked and builds Silver. 4, Map calibration areas, done by people in iD or JOSM: every visible panel inside a 1 to 3 kilometre box; it builds Silver and Gold. 5, Find local datasets, done by people in a browser: a register, statistics or a study, drawn beside the atlas, and a complete register calibrates it; it builds Gold. 6, Retrain and recalibrate, done by the model and a maintainer: the model is fine-tuned again on the country's OpenStreetMap solar and complete areas refit the small-installation estimate, which people then check on random cells; it builds Silver and Gold. On the right, a tall OpenStreetMap panel receives teal arrows marked mapped from stage 3's mapping and from stage 4, and sends teal arrows out to stage 2, marked counted, and to stage 6, marked labels.](../assets/figures/mapping_flywheel_stages.dark.svg#only-dark)
 
-![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](../assets/figures/osm_ai_flywheel.svg#only-light)
-![The mapping flywheel: six numbered stations run clockwise round a ring with the OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](../assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+Every country turns the same wheel. The model does stages 1, 2 and 6, and **you come in at
+3, 4 and 5**. Whatever you map goes into OpenStreetMap, where the next atlas counts it and
+the next model learns from it; a verdict on a review page counts even before anyone maps
+the outline. Each turn starts from a more complete map and a more local model.
+[How it works](../how-it-works.md#workflow) describes the machinery behind each stage.
 
-| way in | what you do | what it changes | start here |
+### Where to start
+
+| you have | do this | guide |
+|---|---|---|
+| a browser and ten minutes | map a few of a country's confirmed leads, or its top leads, in iD | [Map the leads in iD](leads.md#a-few-leads-in-id) |
+| an evening and JOSM | work down a lead file with the Todo list | [Map the leads with JOSM](leads.md#2-set-up-josm-and-the-three-plugins) |
+| a few evenings | map a calibration area completely, starting at the star | [Map a calibration area](calibration-areas.md) |
+| EarthPV running on your PC | judge the solar farms and large installations on the review pages | [Judge large installations](review.md) |
+| knowledge of your country | point us to its register, statistics or a study | [Share a local dataset](local-data.md) |
+| an NVIDIA or AMD graphics card | build the first atlas for a country that has none | [Build an atlas on your PC](new-atlas.md) |
+
+None of these needs the others first, and every one of them counts.
+
+## The stages
+
+### 1. Detect from space
+
+*Done by the model.* Each country's own segmentation model, fine-tuned on that country's
+OpenStreetMap solar, reads dry-season Sentinel-2 imagery and outlines every array it can
+see: reliably from about 400 m<sup>2</sup> up, the size at which an array fills enough
+10 m pixels to have a shape. Below that, a rooftop classifier scores each building, and
+where farm areas calibrate it, a pixel detector looks for small arrays beside the fields.
+Sentinel-2's archive also catches **solar glint**, the sun's reflection off a panel on the
+few dates when sun, panel and satellite line up, which confirms large installations
+independently of the model and of the mappers and measures how their panels are mounted
+([Solar glint](../methods/glint.md)). Nothing found here is
+trusted yet: an outline is a candidate until a person has looked at it.
+
+### 2. Publish the atlas
+
+*Done by the model.* Each [country atlas](../atlas.md) shows *Verified*, the solar mapped in
+OpenStreetMap alone, and *Best*, which adds the model's outlines, each priced by how often
+outlines of its size turn out to be real, with a 90% range. The map draws the candidate
+calibration areas for stage 4, a star on the one to start with, and the *Download* section
+links the work for stage 3, in up to three files of **mapping leads**: outlines more than
+100 m from any solar in OpenStreetMap.
+
+| lead file | what is in it | how to work it |
+|---|---|---|
+| **Confirmed leads** | outlines a person has already judged solar on a review page, which OpenStreetMap does not have yet, largest first | **first**: every one is a real installation waiting to be traced |
+| **Leads** | the model's other outlines up to 10 ha, most promising first | from the top: the top third holds most of the real ones |
+| **Blobs** | the other outlines above 10 ha, largest first | on recent Sentinel-2 as well as high-resolution imagery |
+
+The files are `<country>_pv_confirmed_leads.geojson`, `<country>_pv_new_leads.geojson` and
+`<country>_pv_blob_leads.geojson`. An outline a person judged not solar is in none of them,
+so nobody checks it twice. A country has a confirmed file once someone has judged its review
+pages.
+
+### 3. Check the leads
+
+*Done by people.* A lead is checked when a person has looked at it and either mapped the
+installation in OpenStreetMap or judged it not solar. There are two ways in, and the first
+feeds the second.
+
+**Judge the large outlines on a review page.** If you run EarthPV on your own PC, building
+an atlas or keeping one current, every country's run draws two review pages, one picture per
+outline, each picture four views of the imagery the model saw: Sentinel-2 in true colour, at
+its native 10 m pixels and in false colour, and Esri World Imagery with its capture date.
+
+| page | what it holds | what a verdict changes |
+|---|---|---|
+| **Solar farm review** | outlines above 100,000 m<sup>2</sup> (10 ha) | nothing this size counts until it is mapped or a person judges it solar; each park you confirm is added whole |
+| **Large installation review** | leads from 10,000 m<sup>2</sup> (1 ha) up to 10 ha, on roofs and on the ground | these already count at the share their size usually turns out real; your verdict replaces that share for the one outline |
+
+Press <kbd>1</kbd> for solar, <kbd>2</kbd> for not solar, <kbd>3</kbd> for unsure and
+<kbd>4</kbd> for a bright roof (not solar, kept apart so those false alarms can be
+studied). Then:
+
+1. **Export** your verdicts from the page, and apply them under your name (`large-review`
+   for the second page). Any named reviewer's verdict counts, and your name is kept beside
+   each one:
+
+    ```bash
+    pixi run blob-review apply --aoi YOUR_AOI --reviewer "Your name" \
+        --verdicts YOUR_AOI_blob_verdicts.csv
+    ```
+
+2. **The atlas counts them** when the country is next rebuilt: parks judged solar are
+   added, outlines judged not solar drop out.
+3. **The lead files follow.** When the lead files are next made, every outline judged solar
+   that OpenStreetMap still lacks moves to the country's **confirmed-lead file**, and every
+   one judged not solar leaves the lead files for good.
+
+A verdict takes a few seconds and is the quickest way to make an atlas right where it matters
+most, at its largest installations. How often a large outline is solar differs by country
+more than by anything else: of the large installations judged so far, 543 of 548 were solar
+in the Netherlands and 83 of 842 in Texas. [Judge large installations](review.md) has the
+whole guide.
+
+**Map the leads in JOSM or iD.** Open the confirmed-lead file first, then the lead file from
+the top, then the blobs largest first. Check each lead on high-resolution imagery, trace what
+is really there, and never copy the model's outline. Leads carry no completeness rule: map
+as many as you like. Each installation you add is counted at the next rebuild, and becomes a
+training example for the country's own model in stage 6.
+[Map the leads with JOSM](leads.md) walks through it with the OpenData, Todo list and
+continuous download plugins.
+
+**How far to go: about a third.** The real installations sit near the top of a lead file. A
+third of a country's leads, worked from the top, and a third of its blobs, largest first,
+with a verdict is what a retrain needs. Tell us how far down the file you got in an
+[issue](https://github.com/open-energy-transition/earthpv/issues), naming the
+`candidate_id` of the last lead you checked.
+
+### 4. Map calibration areas
+
+*Done by people.* Below 400 m<sup>2</sup> no lead finds an array, so the small-installation
+estimate is fitted on calibration areas instead: boxes of 1 to 3 km where **every** visible
+panel is mapped, down to the smallest rooftop unit. A half-mapped area is worse than none,
+because it teaches the calibration that the model overcounts; if you cannot finish one,
+[say so](report.md) and it is left out. Six to ten complete areas, from sparse villages to
+dense city centres, start a country's calibration.
+[Map a calibration area](calibration-areas.md) shows how to pick one on the atlas and open
+it in [iD](id.md) or [JOSM](josm.md), and [Report and verify](report.md) how to hand it in.
+
+### 5. Find local datasets
+
+*Done by people.* Most countries already count some of their solar: a register, a
+statistics office, a regulator's net-metering list, a study. Each one is drawn beside the
+atlas, and a legally complete, geolocated register can calibrate the small installations
+the way Germany's does. [Share a local dataset](local-data.md) says what is useful and how
+to send it.
+
+### 6. Retrain and recalibrate
+
+*Done by the model and a maintainer.* Mapped installations come back in the next pull from
+OpenStreetMap. The country's model is fine-tuned again on them and ships only if it does at
+least as well as the general model on a part of the country held back for the test. New complete areas refit
+the small-installation estimate. The next turn of stage 1 starts from both
+([Register an area](maintainers.md) is the maintainers' side).
+
+## How a country moves up
+
+Every atlas carries a badge, **Bronze**, **Silver** or **Gold**. It says how far its figures
+have been checked by people, not how much solar a country has, and it rises as the wheel
+turns:
+
+| level | what it means | what gets a country there | stages |
 |---|---|---|---|
-| **3. Map the leads** | check the arrays of about 400 m<sup>2</sup> and more that the model found and OpenStreetMap lacks; trace what is really there | each one is counted at the next rebuild and becomes a training example for the country's own model | [Map the leads with JOSM](leads.md) |
-| **4. Map a calibration area** | trace **every** panel inside one box, down to the smallest rooftop unit | the small-installation estimate is fitted and checked on complete areas; they move a country from Bronze towards Gold | [the steps below](#how-it-works) |
-| **5. Investigate a local dataset** | find the register, statistics or study your country already has, and tell us what it counts | it is drawn beside the atlas, and a legally complete register can calibrate it | [Know a local dataset?](#know-a-local-dataset) |
+| **Bronze** | the wheel is set up | a model trained on the country's own OpenStreetMap solar, the mapped solar counted once, the model's large outlines priced by measured precision, blobs counted only once checked, and the lead files published | 1, 2 |
+| **Silver** | the wheel has turned once | local ground truth (the country's mapped installations as a reference, or complete calibration areas in use), **and** a verdict on about a third of the leads and a third of the blobs, the real ones mapped, followed by a retrain of the model on the result | 3, 6, and 4 |
+| **Gold** | the wheel reaches below 400 m<sup>2</sup> | installations below 400 m<sup>2</sup> estimated from complete calibration areas across the density range or a complete national register, the estimate holding up when each area is left out in turn, people checking the rooftop classifier's results on cells drawn at random and on its score for every building, and solar glint measured from space on at least a third of the installations of 1 ha and more mapped in OpenStreetMap (never fewer than 100, and 1,000 suffice) | 4 or 5, then 6, and 1 |
 
-None of the three needs the others first, and none needs any coding. If your country has no
-atlas at all and you have a graphics card, you can
-[build its first atlas on your own PC](new-atlas.md).
-[How it works](../how-it-works.md#workflow) describes all six stations, and an
-[LLM assistant can help you](#help-from-an-llm-assistant) at any of them.
-
-## What your mapping changes
-
-**Every installation you map is counted.** Each country's atlas adds the solar mapped in
-OpenStreetMap to its estimate, at the size you drew it, the next time the country is
-rebuilt.
-
-**A complete area calibrates a whole country.** From space, the model reliably sees only
-arrays of roughly 400 m<sup>2</sup> and up. Household and small commercial systems, often
-most of a country's solar, are estimated by a second instrument that has to be fitted on
-small areas where **every** panel is mapped: calibration areas. That is what the atlas
-tiers mean:
-
-| tier | what it has | what it needs |
-|---|---|---|
-| Gold | small installations estimated, calibrated on complete areas or a national register, with the rooftop classifier checked by people on random cells and on its score for every building; leads mapped to localize the model | more areas in the density bands it does not yet cover |
-| Silver | large installations checked against local ground truth; leads mapped to localize the model; any estimate of small installations not yet checked | small-installation calibration that works for its roof sizes, then those checks by people |
-| Bronze | large installations only, nothing local to check against, or not yet enough leads mapped to localize the model | its first complete calibration areas, and [about a third of its leads](leads.md) checked and mapped so the model can be retrained on them |
-
-Every criterion behind the levels is on [Quality levels](../atlas-quality-levels.md).
-
-Six to ten complete areas, spread from sparse villages to dense city centres, are enough to
-start calibrating a country. Each one counts.
-
-## The one rule: map everything inside the line
-
-> A calibration area is only usable once **every visible panel inside it** is in
-> OpenStreetMap, down to the smallest rooftop unit. A half-mapped area is worse than an
-> unmapped one: it silently teaches the calibration that the model overcounts.
-
-If you cannot finish an area, that is fine: [say so](report.md) and it is simply left out.
-What matters is never declaring an area complete when it is not.
-
-## How it works
-
-1. **Pick an area on the atlas.** Open a country's atlas from the [Countries](../atlas.md)
-   tab. Hollow diamonds are candidate areas nobody has mapped yet, and a **star** marks the
-   one to start with (the *Start here* button under the map takes you to it); filled
-   diamonds are finished areas, which still welcome a second check. Click one.
-
-    ![Zambia's atlas over satellite imagery of the town of Chipata, with a candidate area's popup open above its hollow diamond. The popup reads Candidate area, not yet mapped, and lists 59 buildings per square kilometre in the box, density stratum 5 of 8, Esri imagery from 2024-12-01 and an area of 4 square kilometres, followed by a short note and the buttons Open in JOSM, Open in iD and GeoJSON, and the links How to map a calibration area and Report progress. The dashed edges of the 2 km box are visible below the popup.](../assets/figures/contribute-atlas-candidate-popup.jpg)
-
-    *A candidate in Zambia. Everything you need to start is in the popup.*
-
-2. **Open it in your editor.** **Open in iD** starts the browser editor;
-   **Open in JOSM** sends the area to the desktop editor. Both load the area's exact
-   boundary next to the OpenStreetMap data, and both keep the boundary out of your upload.
-3. **Check the imagery.** The popup shows when the satellite imagery was captured. If it is
-   much older than a year, or the box holds nothing to map, [report it](report.md) as not
-   mappable instead of mapping it.
-4. **Map every solar panel inside the boundary**, flipping between imagery layers as you go.
-   The guides below show how, step by step.
-5. **Upload.** The changeset comment and the hashtags `#tracethesun #earthpv #earthpv-calibration` are
-   already filled in.
-6. **[Report it](report.md)**, so a second mapper can check it and we can add it to the
-   calibration.
-
-## Which editor?
-
-| | [iD](id.md) | [JOSM](josm.md) |
-|---|---|---|
-| install | none, runs in the browser | desktop application (Java) |
-| the boundary | read-only overlay, never uploaded | locked layer that refuses upload |
-| good for | your first area; sparse candidates with a few hundred buildings | dense areas with thousands of buildings; second passes |
-| imagery | Esri, Bing, Mapbox and regional layers | the same, plus filters and paint styles for checking |
-
-Both need a free [OpenStreetMap account](https://www.openstreetmap.org/user/new).
-
-## Or map the large installations the model found
-
-Every atlas also links its country's **mapping leads**: places where the model sees a solar
-array, mostly of 400 m<sup>2</sup> and more, that OpenStreetMap does not have. Leads come
-with no completeness rule. Each one you check and map is counted in the atlas and becomes a
-training example for that country's own model. [Map the leads with JOSM](leads.md) walks
-through it with the OpenData, Todo list and continuous download plugins.
-
-**If you run EarthPV on your own PC**, you can also judge the largest of them without mapping:
-every country's run draws two review pages, one picture per outline of a hectare or more,
-and three keys to say solar, not solar or unsure. Each verdict changes the country's
-capacity directly, under your name. [Judge large installations](review.md) shows how.
-
-## Know a local dataset?
-
-Most countries already count some of their solar, and a person who knows the country often
-knows where. Useful sources include:
-
-- a national or regional **register** of PV installations, or a grid operator's list of
-  connections;
-- figures from the **statistics office, energy ministry or regulator**, best of all per
-  province or district;
-- a utility's **net-metering** or subsidy records;
-- a **published study**, thesis or report with its own estimate, or local mapping of solar
-  or rooftops.
-
-Each one is read for what it actually counts (registered or installed, AC or DC, rooftop or
-ground, above which size, as of which date) and for its licence, then drawn beside the
-estimate in the atlas's *Against official and published figures* section, nationally and
-per province. It is never used to score the map, because none of them is ground truth for
-it: a register counts what is registered, a study what its own method sees. A register
-that is legally complete and geolocated can go further and calibrate the estimate, as
-Germany's [MaStR](../methods/mastr-validation.md) does for its small installations; France's
-[ODRE register](../methods/france-validation.md) measured how much capacity a square metre
-of panel carries.
-
-To point us to one, [open an issue](https://github.com/open-energy-transition/earthpv/issues/new)
-with a link, its licence, the date it refers to, and what it counts if you know. A dataset
-we may only read, not reuse, is still worth a comparison.
+The levels add up: Silver needs everything Bronze has, and Gold everything Silver has. So
+the quickest way to move a Bronze country up is stage 3, judging and mapping its leads; the
+way to Gold is stage 4, complete calibration areas, or stage 5, a register. Each country's
+badge, and what it still lacks, is in the corner of its atlas; every criterion is on
+[Quality levels](../atlas-quality-levels.md).
 
 ## Help from an LLM assistant
 
-You do not have to work any station alone. An LLM assistant (a chat assistant, or a coding
+You do not have to work any stage alone. An LLM assistant (a chat assistant, or a coding
 agent such as Claude Code in a copy of this repository) is good at the parts around the
-mapping:
-
-- **Mapping**: explaining a JOSM or iD step, a plugin error or a validator warning; which
-  tags a rooftop array, a solar water heater or a fenced park takes; what the fields in a
-  lead file mean.
-- **Local datasets**: finding a country's register or statistics, reading a report in
-  another language, turning a PDF table into a spreadsheet, and working out what a figure
-  counts. India's register was fetched and read this way.
-- **Running the pipeline**: the repository is written to be read by an agent, with
-  `CLAUDE.md` as its brief and a [runbook for agents](../reproduce.md#running-this-with-claude-or-another-coding-agent).
+mapping: explaining a JOSM or iD step, a plugin error or a validator warning; which tags a
+rooftop array, a solar water heater or a fenced park takes; finding and reading a
+country's register or statistics; and running the pipeline, for which the repository is
+written to be read by an agent, with `CLAUDE.md` as its brief and a
+[runbook for agents](../reproduce.md#running-this-with-claude-or-another-coding-agent).
 
 What it must not do is the part only a person can vouch for. **Never let an assistant edit
-OpenStreetMap**, draw geometry for upload or decide that an area is complete: you trace
-every panel yourself, from imagery you have looked at, and OpenStreetMap's
+OpenStreetMap**, draw geometry for upload, judge an outline on a review page or decide that
+an area is complete: you trace every panel and give every verdict yourself, from imagery
+you have looked at, and OpenStreetMap's
 [Automated Edits code of conduct](https://wiki.openstreetmap.org/wiki/Automated_Edits_code_of_conduct)
 applies to anything else. The same line runs through EarthPV itself: an assistant prepares
 candidate areas, review pages and first readings, and a person makes every call that puts
 evidence into an estimate.
 
-## Where help is needed
-
-Every Bronze country has ten candidate areas, each with Esri imagery recent enough for that
-country's satellite data: eight drawn at random across its building-density range rather than
-picked by hand, and two start-here boxes in its densest districts with the most large roofs
-([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
-Pakistan has eleven: five aimed at the sparse end of its calibration and six hand-placed
-gap boxes. Yemen, calibrated as Silver since its
-farm areas, has town boxes where panels show on rooftops, for its rooftop classifier (Yafi'
-and Qa'tabah town were mapped on 2026-10-29). Ghayl Bawazir, a town where that classifier
-sees solar on roofless concrete shells, was mapped on 2026-10-31 and holds none: the measure
-of how often the classifier is wrong. Yemen has no star for now; its first six candidates
-are towns drawn at random, mapped in the order given, which say what a town picked blind
-holds.
-
-| country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
-|---|---|---:|---|---|
-| [Egypt](../atlas-egypt.md) | Bronze | 10 | 150 to 1,085 | Qalyub, Qalyubia |
-| [India](../atlas-india.md) | Bronze | 9 | 78 to 2,946 | Surat, Gujarat |
-| [Morocco](../atlas-morocco.md) | Bronze | 10 | 36 to 954 | Tangier-Assilah |
-| [Nigeria](../atlas-nigeria.md) | Bronze | 10 | 39 to 2,291 | Ikeja, Lagos |
-| [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
-| [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
-| [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Silver | 11 | 66 to 617 | Malakand, Khyber Pakhtunkhwa |
-| [Yemen](../atlas-yemen.md) | Bronze (calibrated as Silver) | 16 | 34 to 2,471 | none for now |
-| [France](../atlas-france.md) | Bronze (calibrated as Silver) | none | map any solar you can see | |
-
-**Start at the star.** Wherever a country's small solar is not yet measured, on its roofs or
-on its farms, the candidates are numbered in mapping order: the start-here boxes first, in
-the densest districts with the most large roofs, then the sampled ones from the densest
-down. Dense districts with large roofs are where solar is most likely,
-so a first area there has panels to find and gives the country's calibration its first
-positives. The sparse candidates come later and still matter: a calibration only reaches as
-far down in density as its sparsest complete area, and they are the quickest to finish.
-Pakistan already measures its rooftops, so its star went to a farm box, the one with the most
-cropland, until all eight were mapped; it is back on the densest building box. Yemen's town boxes come in order of how many roofs a classifier scores as likely
-solar.
-
-Want to suggest an area of your own? The **Propose a calibration area** button on the atlas
-(the dashed square under the zoom buttons) drops a 2 km square where you click and checks
-it against every existing area. Place it by landscape, never because you can already see
-solar there: a sample chosen for its panels is biased before anyone maps it. An area does
-not have to be a square: [Draw your own area](draw-area.md) shows how to outline one in JOSM
-and send it in as GeoJSON.
-
 ## New to OpenStreetMap editing?
 
-You do not need to learn everything first. The [iD guide](id.md) is enough for a first
-area. For JOSM, Open Energy Transition's [MapYourGrid](https://mapyourgrid.org/)
-campaign has the material already:
-[installing JOSM](https://mapyourgrid.org/installation-instructions/), the
-[JOSM Starter-Kit](https://mapyourgrid.org/starter-kit/#josm-starter-kit) and its
-[Strategies](https://mapyourgrid.org/strategies/) page (filters, `fixme` notes and
-pre-upload validation all apply here unchanged). It maps power lines rather than panels, but
-the editor skills are the same.
-
-The complete rules (what counts as PV, how to trace it, imagery dating, QA) are in the
-[mapping protocol](../calibration-mapping-protocol.md). Maintainers registering areas in the
-pipeline: see [Register an area](maintainers.md).
+You do not need to learn everything first. The [iD guide](id.md) is enough for a first lead
+or area. For JOSM, Open Energy Transition's [MapYourGrid](https://mapyourgrid.org/) campaign
+has the [JOSM Starter-Kit](https://mapyourgrid.org/starter-kit/#josm-starter-kit); it maps
+power lines rather than panels, but the editor skills are the same. The complete rules
+(what counts as PV, how to trace it, imagery dating, QA) are in the
+[mapping protocol](../calibration-mapping-protocol.md).

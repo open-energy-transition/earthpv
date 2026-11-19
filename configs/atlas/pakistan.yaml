@@ -41,7 +41,9 @@ cities:
 # 1,000 m2 steeper than 15 degrees, 146 larger ones steeper than 30), 2,341 open-ground leads
 # of peak probability below 0.9 and 108 on ever-wet ground, so every lead in it was in the
 # file checked. A rebuilt lead file needs
-# a new declaration.
+# a new declaration. The 2026-11-19 file (review verdicts sort the files) holds the same 5,634
+# leads, candidate for candidate; its 41 blobs left the blob file, 2 judged solar for the
+# confirmed file and 39 judged not solar, so every lead in it was in the file checked.
 # Silver and Gold also need the model retrained on mapped leads at least once (owner rule,
 # 2026-11-01; atlas.leads_retrained). The owner declared Pakistan's first turn on
 # 2026-11-01: the first model's lead file (v3_combined_india, 2026-07-16,
@@ -59,10 +61,10 @@ validation:
   score: silver
   note: "Calibrated above and below 400&nbsp;m&sup2;.<br>Small half not yet checked by people."
   leads_checked:
-    made: "2026-11-01"
+    made: "2026-11-19"
     by: owner
     date: "2026-10-31"
-    note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 515 leads on steep ground, 2,341 open-ground leads of low model probability and 108 on ever-wet ground"
+    note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 515 leads on steep ground, 2,341 open-ground leads of low model probability and 108 on ever-wet ground, and the 2026-11-19 file holds the same 5,634 leads, its blobs now 2 confirmed leads and 39 left out"
   retrained_on_leads:
     leads: "2026-07-16"
     # Over half of that file's leads had a verdict, as the owner declared under the rule of

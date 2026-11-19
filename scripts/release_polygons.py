@@ -61,7 +61,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -70,7 +69,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from earthpv import atlas  # noqa: E402
 from earthpv.export import new_lead_mask  # noqa: E402
 from earthpv.postprocess import MAX_CANDIDATE_M2  # noqa: E402
-from release_leads import PAGES, REPO, SOURCES, _osm_as_of, _page_data, country_name  # noqa: E402
+from release_leads import (PAGES, REPO, SOURCES, _osm_as_of, _page_data,  # noqa: E402
+                           country_name, review_table)
 
 MANIFEST = ROOT / "configs" / "atlas_polygons.json"
 TAG = "pv-polygons-2026-11-11"
@@ -111,36 +111,11 @@ def _round_coords(geoms: gpd.GeoSeries, decimals: int) -> gpd.GeoSeries:
 
 def review_verdicts(aoi: str, cands: gpd.GeoDataFrame) -> pd.Series:
     """`pv` / `not_pv` / `bright_roof` per candidate where the country's calibration table
-    records a review (`oversize_review`, `lead_review`), matched by `candidate_index` (a
-    label of the candidate file's own index, which the solar thermal filter left with gaps)
-    and checked by area, as `density.load_oversize_admission` does. Unsure and blank are
-    None, and so is a verdict on a candidate the file no longer holds (a `pv` one is an
-    error, as in density)."""
-    out = pd.Series(None, index=cands.index, dtype=object)
-    table = ROOT / "configs" / "calibration" / f"{aoi}_candidate_precision.yaml"
-    if not table.exists():
-        return out
-    t = yaml.safe_load(table.read_text()) or {}
-    for key in ("oversize_review", "lead_review"):
-        block = t.get(key) or {}
-        if not block.get("review_csv"):
-            continue
-        r = pd.read_csv(ROOT / block["review_csv"])
-        r = r[r["verdict"].isin(["pv", "not_pv"])]
-        known = r["candidate_index"].isin(cands.index)
-        if not known[r["verdict"] == "pv"].all():
-            raise ValueError(f"{aoi}: {block['review_csv']} judges solar a candidate the "
-                             "file lacks (another candidate file?)")
-        r = r[known]
-        got = cands.loc[r["candidate_index"], "area_m2"].to_numpy(float)
-        if not np.allclose(got, r["area_m2"].to_numpy(float), rtol=1e-6, atol=1.0):
-            raise ValueError(f"{aoi}: {block['review_csv']} describes another candidate file")
-        flag = r["flag"].fillna("") if "flag" in r else pd.Series("", index=r.index)
-        out.loc[r["candidate_index"].to_numpy()] = np.where(flag.eq("bright_roof"),
-                                                            "bright_roof", r["verdict"])
-        print(f"  {key}: {len(r):,} verdicts ({int((r['verdict'] == 'pv').sum()):,} solar; "
-              f"{int((~known).sum())} on candidates no longer in the file)")
-    return out
+    records a review (`release_leads.review_table`, which the lead files read too). Unsure
+    and blank are None, and so is a verdict on a candidate the file no longer holds (a `pv`
+    one is an error, as in density)."""
+    v = review_table(aoi, cands)["review_verdict"]
+    return v.where(v.ne("unsure"), None)
 
 
 def _rel(p: Path) -> str:
