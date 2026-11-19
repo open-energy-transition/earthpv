@@ -1115,7 +1115,7 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Morocco | `v11_combined_morocco` | 898.9 / 935.1 | AOI stops at 27.7N |
 | Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
-| Nigeria | `v45r_resnet50_nigeria` ep 11 at 0.3 | 90.2 / 128.0 | localized ResNet-50 since 2026-11-19; its 157 blobs unjudged |
+| Nigeria | `v45r_resnet50_nigeria` ep 11 at 0.3 | 128.7 / 164.8 | localized ResNet-50 and the 2026-11-14 pull since 2026-11-19 |
 | Namibia | `v17_combined_namibia` | 464.3 / 512.3 | Cuvelai pans partly in Best |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | dark open ground in Best |
 | Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | floor of 1 building per cell |

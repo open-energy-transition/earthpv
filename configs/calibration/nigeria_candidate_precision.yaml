@@ -380,3 +380,16 @@ lead_review:
   n_judged: 513
   n_pv: 18
   n_not_pv: 495
+oversize_review:
+  derived: '2026-11-19'
+  reviewer: 'owner, 2026-11-19, every queued outline on the disk review page (stated
+    in chat: all not PV; no page export)'
+  review_csv: results/nigeria_oversize_review/review.csv
+  population: model-drawn outlines above max_candidate_m2 with no mapped solar within
+    min_distance_m of them (export.new_lead_mask)
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/nigeria_overpass_solar_pull20261114.parquet
+  n_outlines: 157
+  n_judged: 157
+  n_pv: 0

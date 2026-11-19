@@ -472,8 +472,8 @@
       },
       "blobs": {
         "file": "nigeria_pv_blob_leads.geojson",
-        "n": 157,
-        "size_bytes": 1210697,
+        "n": 0,
+        "size_bytes": 204,
         "min_area_m2": 100000.0
       },
       "confirmed": {
@@ -488,7 +488,7 @@
       },
       "judged_not_pv": {
         "leads": 495,
-        "blobs": 0
+        "blobs": 157
       }
     },
     "pakistan": {
