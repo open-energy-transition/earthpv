@@ -9,7 +9,8 @@
 # backlog). compose is resumable (temp-then-rename writes), so each pass skips done cells.
 #
 # Exits when the target cell count is reached, compose exits cleanly (all compositable cells
-# done), or progress stalls (remaining cells have no scenes).
+# done), three clean passes add nothing (remaining cells have no scenes), or MAX_STALL
+# passes in a row add nothing.
 #
 # Usage:  bash scripts/compose_loop.sh [AOI] [TARGET_CELLS] [MIN_BUILDINGS]
 #   AOI            default pakistan
@@ -65,16 +66,68 @@ COMPDIR="data/composites/$AOI/composites"
 mkdir -p data
 echo "$(date '+%F %T') LOOP: start aoi=${AOI} target=${TARGET:-none} min_buildings=${MIN_BUILDINGS} workers=${WORKERS} iter_s=${ITER_S} extra='${EXTRA}'" >> "$LOG"
 
-prev=-1; stall=0
+# Lift the open-file soft limit to the hard one. A `systemd-run --user` unit starts with
+# systemd's default soft limit of 1024 (an interactive shell usually has far more), and six
+# workers each holding GDAL/curl handles on a dozen scenes exhaust it within hours: passes
+# stall with no new cell, then die with "Too many open files" or curl's "error setting
+# certificate file" (measured on Sweden 2026-11-09, 1910 cells, about a third of the
+# wall clock lost to stalled passes before the crash).
+ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
+echo "$(date '+%F %T') LOOP: open-file limit $(ulimit -n)" >> "$LOG"
+
+# Download the AOI's VIDA buildings once, outside the stall watchdog. Without a local
+# data/vida/<ISO3>.parquet, compose selects cells by scanning the remote parquet row group
+# by row group, which takes longer than STALL_S for a country (Sweden: >10 min for 0.9 GB),
+# so the watchdog kills every pass before its first cell and the loop never progresses.
+# The local file makes the same scan take seconds. AOIs with a source_region read their own
+# local data and are skipped.
+VIDA_ISO3=$($PY - "$AOI" <<'EOF' 2>>"$LOG"
+import sys
+from earthpv.buildings import _iso3_for
+from earthpv.config import Settings
+cfg = Settings.load().aois.get(sys.argv[1]) or {}
+if not cfg.get("source_region"):
+    print(_iso3_for(cfg) or "")
+EOF
+)
+if [ -n "$VIDA_ISO3" ] && [ ! -s "data/vida/$VIDA_ISO3.parquet" ]; then
+  mkdir -p data/vida
+  echo "$(date '+%F %T') LOOP: downloading VIDA buildings for $VIDA_ISO3 to data/vida/" >> "$LOG"
+  $PY scripts/ranged_download.py \
+    "https://data.source.coop/vida/google-microsoft-open-buildings/geoparquet/by_country/country_iso=$VIDA_ISO3/$VIDA_ISO3.parquet" \
+    "data/vida/$VIDA_ISO3.parquet" >> "$LOG" 2>&1 \
+    || echo "$(date '+%F %T') LOOP: VIDA download failed; compose falls back to remote scans" >> "$LOG"
+fi
+
+# Passes in a row that added no cell: `clean_idle` counts those that walked the whole cell
+# list (rc 0), `stall` every one. Three clean ones mean the remaining cells have no usable
+# scenes, which is how a run ends whose last cells landed in a pass the wall clock cut.
+# Passes the wall clock or the watchdog cut get a longer leash, MAX_STALL: on a link that
+# is up but failing they are the network's fault, not the cells' (measured on Sweden
+# 2026-11-10: three 10-minute stalls of "Empty reply from server" ended the run at 1150 of
+# 1910, and the next start carried on at the usual rate).
+MAX_STALL=${MAX_STALL:-12}
+stall=0; clean_idle=0
 while true; do
   done=$(find "$COMPDIR" -name composite_0.tif 2>/dev/null | wc -l)
   echo "$(date '+%F %T') LOOP: ${done}/${TARGET} done (stall=${stall})" >> "$LOG"
   if [ "$TARGET" -gt 0 ] && [ "$done" -ge "$TARGET" ]; then
     echo "$(date '+%F %T') LOOP: target reached, exiting" >> "$LOG"; break
   fi
-  if [ "$done" -le "$prev" ]; then stall=$((stall+1)); else stall=0; fi
-  [ "$stall" -ge 3 ] && { echo "$(date '+%F %T') LOOP: no progress 3x at ${done}, exiting" >> "$LOG"; break; }
-  prev=$done
+  if [ "$stall" -ge "$MAX_STALL" ]; then
+    echo "$(date '+%F %T') LOOP: no progress ${stall}x at ${done}, exiting" >> "$LOG"; break
+  fi
+  # Wait out a network outage instead of spending passes on it. With no DNS every cell fails
+  # within seconds, and that pass exits 0 like a finished one (measured on Sweden 2026-11-09:
+  # the laptop lost its network, all 1910 cells failed in 14 s, "Composited 0 new cells",
+  # and the loop exited at 902 of 1910).
+  waited=0
+  until getent hosts planetarycomputer.microsoft.com >/dev/null 2>&1 \
+     || getent hosts earth-search.aws.element84.com >/dev/null 2>&1; do
+    [ "$waited" -eq 0 ] && echo "$(date '+%F %T') LOOP: no network, waiting" >> "$LOG"
+    sleep 60; waited=$((waited+60))
+  done
+  [ "$waited" -gt 0 ] && echo "$(date '+%F %T') LOOP: network back after ${waited}s" >> "$LOG"
   timeout -k 60 "$ITER" $PY -m earthpv.cli compose --aoi "$AOI" \
     --min-buildings "$MIN_BUILDINGS" --workers "$WORKERS" $EXTRA >> "$LOG" 2>&1 &
   pass_pid=$!
@@ -97,11 +150,31 @@ while true; do
   wait "$pass_pid"; rc=$?
   kill "$watchdog" 2>/dev/null; wait "$watchdog" 2>/dev/null
   echo "$(date '+%F %T') LOOP: iteration exit rc=${rc}" >> "$LOG"
-  # rc 124 = timed out (expected: token-refresh restart). rc 0 = compose processed the whole
-  # cell list (all compositable cells done) -> finished.
-  # rc 0 means compose walked the whole cell list. A pass the watchdog killed exits
-  # non-zero, so it is retried like any other interrupted pass.
-  [ "$rc" -eq 0 ] && { echo "$(date '+%F %T') LOOP: compose exited cleanly, done" >> "$LOG"; break; }
+  # rc 124 = timed out (expected: token-refresh restart); a pass the watchdog killed also
+  # exits non-zero. Both are retried. rc 0 = compose walked the whole cell list, which
+  # finishes the run when the pass added cells. A pass in which every remaining cell failed
+  # (network gone mid-pass) also exits 0, so one that added none is retried, and only the
+  # third in a row ends the run.
+  after=$(find "$COMPDIR" -name composite_0.tif 2>/dev/null | wc -l)
+  if [ "$after" -gt "$done" ]; then
+    stall=0; clean_idle=0
+    if [ "$rc" -eq 0 ]; then
+      echo "$(date '+%F %T') LOOP: compose exited cleanly, done" >> "$LOG"; break
+    fi
+  else
+    stall=$((stall+1))
+    if [ "$rc" -eq 0 ]; then
+      clean_idle=$((clean_idle+1))
+      if [ "$clean_idle" -ge 3 ]; then
+        echo "$(date '+%F %T') LOOP: ${clean_idle} clean passes added no cell," \
+          "the remaining cells have no usable scenes, done" >> "$LOG"; break
+      fi
+      echo "$(date '+%F %T') LOOP: clean exit but no new cells, retrying" >> "$LOG"
+      sleep 60
+    else
+      clean_idle=0
+    fi
+  fi
   sleep 15   # guard against a tight loop if compose fails instantly
 done
 echo "$(date '+%F %T') LOOP: wrapper exiting" >> "$LOG"

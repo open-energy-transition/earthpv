@@ -98,13 +98,14 @@ pixi run python scripts/overpass_labels_chunked.py \
 pixi run python scripts/drop_solar_thermal.py --aoi YOUR_AOI
 ```
 
-The first run also downloads the country's building footprints once. Solar water heaters and
-mirror fields carry the same OpenStreetMap tag as panels, so the second command takes them out.
+Solar water heaters and mirror fields carry the same OpenStreetMap tag as panels, so the second
+command takes them out.
 
 ## 4. Build the imagery
 
-This is the long one. It runs in the background, survives closing the terminal, and resumes if your
-computer restarts. First make sure your long jobs outlive your login:
+This is the long one. It runs in the background and survives closing the terminal. Before the
+imagery it downloads the country's building footprints once. First make sure your long jobs
+outlive your login:
 
 ```bash
 loginctl enable-linger "$USER"
@@ -112,8 +113,11 @@ loginctl enable-linger "$USER"
 systemd-run --user --collect --unit=earthpv-compose-YOUR_AOI \
     -p WorkingDirectory="$PWD" bash scripts/compose_loop.sh YOUR_AOI 0 1000
 
-journalctl --user -fu earthpv-compose-YOUR_AOI     # watch it, Ctrl+C only stops watching
+grep LOOP: data/compose_YOUR_AOI.log | tail     # cells done so far
 ```
+
+If the computer restarts, the job does not start again by itself. Run the same `systemd-run`
+command again: it skips the cells that are already done.
 
 The `1000` means imaging only cells with at least 1,000 buildings. Use a lower number in a country
 of small villages.
@@ -130,6 +134,7 @@ pixi run -e ml earthpv infer --aoi YOUR_AOI \
 pixi run earthpv postprocess --aoi YOUR_AOI --threshold 0.3 --building-buffer-m 500 --stream-buildings
 pixi run python scripts/drop_solar_thermal.py --aoi YOUR_AOI --candidates
 pixi run earthpv export --aoi YOUR_AOI --exclude-mapped --min-distance-m 100
+pixi run earthpv calibrate-candidates --aoi YOUR_AOI --recall-reference none
 ```
 
 ## 6. Judge the very large outlines
@@ -167,7 +172,6 @@ pixi run python scripts/screen_osm_ground_perimeters.py --aoi YOUR_AOI \
     --out results/YOUR_AOI_osm_ground_screen/screen_full.csv \
     --png-dir results/YOUR_AOI_osm_ground_screen
 
-pixi run earthpv calibrate-candidates --aoi YOUR_AOI --recall-reference none
 pixi run earthpv density --aoi YOUR_AOI --districts --threshold 0.3
 pixi run earthpv check-density --aoi YOUR_AOI
 
@@ -185,7 +189,8 @@ pixi run earthpv atlas --aoi YOUR_AOI --include-offgrid-osm \
 Open `results/YOUR_AOI_pv_evidence_atlas.html` in your browser. That is your country's solar map.
 
 `check-density` reports regions that look implausible. It is telling you where to look, and in a
-country with no small-rooftop estimate some warnings are expected.
+country with no small-rooftop estimate some warnings are expected. It then ends in `FAIL`, so run
+the commands after it on their own rather than chaining them with `&&`.
 
 ## 8. Put it on the globe
 
