@@ -77,3 +77,14 @@ confidence:
     the retrained model got the geography substantially better while recovering about a
     third of the capacity. Read the map for where French PV is, not for how much there
     is.</p>
+
+# The quality checklist on the page (earthpv.quality): what no file on record says. This
+# country's model was chosen before the held-out comparison was recorded
+# (results/<aoi>_checkpoint_decision.json).
+quality:
+  model:
+    status: done
+    note: >-
+      Localized on France's own map (v5), and kept because it puts capacity in the right
+      communes far better than the general model it replaced: scored against the national
+      register, its rank correlation is 0.45 against 0.29.

@@ -11,7 +11,8 @@ its blob file where there is one, re-resolves the calibration badge (Gold and Si
 share of the leads mapped and the model retrained on them, `atlas.resolve_validation_badge`,
 so a new declaration can move a badge either way), and fills the current template. Every other key is re-serialised byte for byte, which is
 checked before writing, so no figure can change. A page whose AOI has no manifest entry
-moves to the new template without a lead link.
+moves to the new template without a lead link. The quality checklist
+(`earthpv.quality`) is recomputed on every page it touches.
 
     pixi run python scripts/patch_atlas_leads.py docs/assets/interactive/*evidence_atlas.html
     pixi run python scripts/patch_atlas_leads.py PAGE --template <file> --dry-run
@@ -31,7 +32,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from patch_atlas_coverage import _insert_after  # noqa: E402
 from patch_atlas_pose import DUMPS  # noqa: E402
-from retemplate_atlas import PLACEHOLDER, TEMPLATE, aoi_of, extract, read_old_template  # noqa: E402
+from retemplate_atlas import (PLACEHOLDER, TEMPLATE, aoi_of, extract, quality_html,  # noqa: E402
+                              read_old_template)
 
 
 # The tier a page's badge shows, and the tier it earned when it shows a lower one.
@@ -75,6 +77,10 @@ def main() -> int:
             T = {k: v for k, v in data["totals"].items() if k != "leads"}
             data["totals"] = _insert_after(T, "import_ceiling", {"leads": leads}) if leads else T
             values["__PV_DATA_JSON__"] = json.dumps(data, **DUMPS)
+            # The quality checklist reads the leads and the badge just set, and the review
+            # verdicts and declarations as they stand today, so it is always recomputed.
+            if "__QUALITY_HTML__" in new:
+                values["__QUALITY_HTML__"] = quality_html(aoi, values)
             fresh = {"__LAYERS_JSON__": lambda: atlas.map_layers_json(aoi),
                      "__AOI_KEY__": lambda: aoi}
             html = new

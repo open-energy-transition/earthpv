@@ -1,0 +1,12 @@
+# Nigeria's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# The quality checklist on the page (earthpv.quality): what no file on record says. The
+# published page runs a general model; the localized one (v45r) is not published yet.
+
+quality:
+  model:
+    status: partial
+    note: >-
+      A general model (v5), kept over the older general model v4 on Nigeria's mapped
+      installations. A model localized on Nigeria's own map that beats it in a held-out
+      region is built but not yet published.

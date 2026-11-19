@@ -349,3 +349,13 @@ confidence:
       target="_blank" rel="noopener">pv magazine, 20 January 2026</a>;
       <a href="https://ember-energy.org/data/china-solar-exports-data/" target="_blank"
       rel="noopener">Ember</a>.</p>
+
+# The quality checklist on the page (earthpv.quality): what no file on record says. This
+# country's model was chosen before the held-out comparison was recorded
+# (results/<aoi>_checkpoint_decision.json).
+quality:
+  model:
+    status: partial
+    note: >-
+      Localized on Pakistan's own map (v16, trained on the OpenStreetMap pull of 25 October
+      2026); no comparison with a general model on a held-out region is on record.

@@ -113,6 +113,15 @@ fewer, 1,000 where a third would be more). scripts/glint_coverage.py computes `e
 `measured` from a survey and prints the block. Without it a Gold page shows Silver
 (`atlas.glint_surveyed`); like `retrained_on_leads` it does not lapse.
 
+`quality` says, for a check of the page's quality checklist (`earthpv.quality.CHECKS`), what
+no file on record can: `{<check>: {status, note}}`, with `status` one of done, warn, partial,
+todo or na and `note` the HTML the row shows. It replaces the row the checklist would derive,
+so keep it to facts the pipeline cannot read, such as how a country run before the held-out
+rule got its model:
+
+    quality:
+      model: {status: partial, note: "A general model; ..."}
+
 `validation.leads_checked` records that every lead in the country's current lead file has a
 human verdict, naming the file by its `made` date; the Downloads card says so. From
 2026-10-31 to 2026-11-01 it was a requirement of Silver and Gold.
@@ -142,7 +151,13 @@ CONFIG_DIR = Path("configs/atlas")
 NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
-             "validation", "start_here", "map_view"}
+             "validation", "start_here", "map_view", "quality"}
+# The checks of an atlas's quality checklist (`earthpv.quality.CHECKS`, same ids), which a
+# config's `quality` block may state where no file records them.
+QUALITY_CHECKS = ("model", "imagery", "precision", "plausibility", "osm", "ground_truth",
+                  "leads", "blobs", "large_review", "leads_mapped", "retrained", "small",
+                  "small_holds", "roofclf_checked", "glint", "official")
+_QUALITY_STATUS = {"done", "warn", "partial", "todo", "na"}
 _VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads", "glint_survey"}
 _GLINT_KEYS = {"survey", "eligible", "measured", "min_area_m2", "by", "date", "note"}
 _LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
@@ -198,6 +213,8 @@ class AtlasConfig:
     start_here: str = ""
     # `map_view`: [west, south, east, north] the map opens on; empty: the whole country.
     map_view: tuple = ()
+    # `quality`: (check, status, note) rows the quality checklist takes from the config.
+    quality: tuple = ()
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -239,6 +256,25 @@ def _parse_cities(aoi: str, raw) -> tuple:
         if not (-180 <= lon <= 180 and -90 <= lat <= 90):
             _fail(aoi, f"city {name!r} is at {lon},{lat}, which is not a lon/lat pair")
         out.append([str(name), lon, lat])
+    return tuple(out)
+
+
+def _parse_quality(aoi: str, raw) -> tuple:
+    if raw is None:
+        return ()
+    if not isinstance(raw, dict):
+        _fail(aoi, "`quality` must be a mapping of check -> {status, note}")
+    out = []
+    for check, entry in raw.items():
+        if check not in QUALITY_CHECKS:
+            _fail(aoi, f"quality check {check!r} is not one of {list(QUALITY_CHECKS)}")
+        if not isinstance(entry, dict) or set(entry) - {"status", "note"}:
+            _fail(aoi, f"quality.{check} must be a mapping of `status` and `note`")
+        if entry.get("status") not in _QUALITY_STATUS:
+            _fail(aoi, f"quality.{check}.status must be one of {sorted(_QUALITY_STATUS)}")
+        if not str(entry.get("note") or "").strip():
+            _fail(aoi, f"quality.{check} needs a `note`")
+        out.append((check, entry["status"], " ".join(str(entry["note"]).split())))
     return tuple(out)
 
 
@@ -452,5 +488,6 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         glint_note=str(glint.get("note") or "").strip(),
         start_here=str(raw.get("start_here") or "").strip(),
         map_view=_parse_map_view(aoi, raw.get("map_view")),
+        quality=_parse_quality(aoi, raw.get("quality")),
         path=path,
     )

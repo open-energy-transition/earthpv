@@ -573,6 +573,16 @@ Page rules worth knowing before touching the template:
   beside it, KPIs 2 x 2 beside the province chart, lower sections paired). No EarthPV logo above
   the title (owner). A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`,
   or empty download cards show.
+- **Quality checklist** (`earthpv.quality`, `__QUALITY_HTML__`, section `#quality` under the
+  map; owner, 2026-11-19): 16 checks in five stages (detection, map ground truth, checked by
+  people, below 400 m², independent), each done / with flags / under way / not yet / n/a and
+  tagged with the level that needs it. Every status is read from a record (page totals,
+  `validation` declarations, calibration table, review CSVs, `results/<aoi>_checkpoint_decision.json`,
+  `<density>/plausibility.csv`, the roofclf random-cell log, `results/glint_coverage/`); what
+  no file holds goes in the config's `quality: {<check>: {status, note}}` (model choice of
+  Pakistan, Germany, France, Zambia, Nigeria). `patch_atlas_leads.py` and `retemplate_atlas.py`
+  recompute it on every pass, so re-run `patch_atlas_leads.py` on the pages after a review
+  sitting or a declaration.
 - **Tiles and sections**: the generation tile (`totals.generation`, `atlas.generation_totals`:
   Best times PVGIS yield from a cached probe grid `data/irradiance_probes/<aoi>.csv`, fetched by
   `earthpv atlas` unless `--no-fetch-irradiance`; leans high, carries no yield uncertainty;

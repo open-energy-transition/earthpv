@@ -96,3 +96,24 @@ confidence:
     it; what remains unreconciled is the model's own detections and the small-panel half.
     Every other country in this project would need a register of this kind to make the
     same statement, and does not have one.</p>
+
+# The quality checklist on the page (earthpv.quality): what no file on record says. This
+# country's model was chosen before the held-out comparison was recorded
+# (results/<aoi>_checkpoint_decision.json).
+quality:
+  model:
+    status: partial
+    note: >-
+      A model trained on several countries' maps, Germany's among them (v4_combined_all); no
+      comparison on a held-out German region is on record, and the retrain on Germany's
+      checked leads is still to come.
+  small_holds:
+    status: done
+    note: >-
+      Declared validated against the national register (MaStR) by the owner on
+      13 November 2026.
+  roofclf_checked:
+    status: todo
+    note: >-
+      The estimate below 400 m&sup2; prices roof area against the register, with no
+      classifier; no cell drawn at random has been reviewed on imagery yet.

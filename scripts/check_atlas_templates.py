@@ -35,6 +35,7 @@ REQUIRED = {
         ("calib-hit", "the click target that opens a calibration area in JOSM or iD"),
         ("farm-dot", "the farm calibration area's own (green) marker, apart from building areas"),
         ('id="references"', "the comparison with official and published figures and Ember imports"),
+        ("__QUALITY_HTML__", "the quality checklist: what has been checked and what is open"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__VALIDATION_BADGE__", "the calibration score stamp"),

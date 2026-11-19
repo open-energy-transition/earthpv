@@ -15,7 +15,10 @@ and then substituted into the current template. The data block, the badge, the p
 the download section move across byte for byte, so **no figure can change**. Placeholders
 the old template did not have are computed fresh from configuration only
 (`__LAYERS_JSON__`, from `configs/atlas/<aoi>.yaml`; `__AOI_KEY__`, the AOI itself), never
-from pipeline output.
+from pipeline output. The quality checklist (`__QUALITY_HTML__`) is the exception: it says
+what has been checked so far, which changes without a rebuild (a review sitting, a
+declaration), so `quality_html` recomputes it on every pass from the page's own data block,
+its badge and the records `earthpv.quality` reads.
 
     pixi run python scripts/retemplate_atlas.py docs/assets/interactive/*evidence_atlas.html
     pixi run python scripts/retemplate_atlas.py PAGE --old-template 9fb3a29 --dry-run
@@ -56,6 +59,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = Path("src/earthpv/templates/pv_evidence_atlas.html")
 PLACEHOLDER = re.compile(r"(__[A-Z0-9_]+__)")
+
+
+def page_density_dir(aoi: str) -> Path:
+    """The density directory of the run behind `aoi`'s published page (the lead release's
+    table, `oversize_review.run_source`), where its plausibility check lives."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from oversize_review import run_source
+
+    return ROOT / run_source(aoi)["pred"] / "density"
+
+
+def quality_html(aoi: str, values: dict) -> str:
+    """`__QUALITY_HTML__` for a page, from its recovered data block and badge."""
+    from earthpv import quality
+
+    totals = json.loads(values["__PV_DATA_JSON__"]).get("totals", {})
+    return quality.checklist_html(aoi, totals, values.get("__VALIDATION_BADGE__", ""),
+                                  page_density_dir(aoi))
 
 
 def read_old_template(spec: str) -> str:
@@ -206,6 +227,8 @@ def main() -> int:
                 else:
                     values = {**values, **new_prose}
                     prose_note = " (prose refreshed)"
+            if "__QUALITY_HTML__" in new_keys:
+                values = {**values, "__QUALITY_HTML__": quality_html(aoi, values)}
             html = new
             for key in sorted(new_keys):
                 if key in values:

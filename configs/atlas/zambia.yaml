@@ -35,3 +35,14 @@ confidence:
       mapped as if complete. Removing them moved the hand-mapped tier down by roughly a
       third. Nowhere else in this project is the mapped population small enough to audit
       this way, which is worth remembering when reading a larger country's map.
+
+# The quality checklist on the page (earthpv.quality): what no file on record says. This
+# country's model was chosen before the held-out comparison was recorded
+# (results/<aoi>_checkpoint_decision.json).
+quality:
+  model:
+    status: partial
+    note: >-
+      A general model (v4), not trained on Zambia's map. A localized retrain was built but
+      not shipped: the held-out Copperbelt cluster has three installations, all of which the
+      general model already finds, so it could show no gain.

@@ -405,7 +405,13 @@ def quality_page() -> str:
            "against installations mapped by hand and by people looking at what the model "
            "found, not how much solar a country has. The levels add up: Silver needs everything Bronze asks for, and Gold "
            "everything Silver asks for. A country shows the highest level whose every "
-           "criterion it meets.", ""]
+           "criterion it meets.", "",
+           "Under its map, every atlas also carries a checklist, *What has been checked so "
+           "far, and what is still open*: each step below and the two review pages, marked "
+           "done, under way or not yet, with the numbers behind it and the level that needs "
+           "it. It is read from the country's records (review verdicts, declarations, the "
+           "checks the pipeline ran) and refreshed whenever the page is patched, so it can be "
+           "ahead of the badge: a step done but not yet recorded shows as under way.", ""]
     heads = {"bronze": "Bronze: every published atlas",
              "silver": "Silver: Bronze, plus local ground truth and leads mapped to "
                        "localize the model",

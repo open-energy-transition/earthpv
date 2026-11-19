@@ -726,6 +726,54 @@
   .method-body .m-steps { list-style: none; margin: 0 0 14px; padding: 0; }
   .method-body .m-steps > li { margin: 0 0 12px; padding-left: 14px;
     border-left: 3px solid var(--m, var(--hair)); }
+  /* ── quality checklist (`earthpv.quality.checklist_html`) ────────── */
+  .qa { --qa-bronze: #d97c3f; --qa-silver: #a9b6c7; --qa-gold: #e0a521; }
+  @media (prefers-color-scheme: light) {
+    .qa { --qa-bronze: #8a3f10; --qa-silver: #4d5a6b; --qa-gold: #8a6108; }
+  }
+  :root[data-theme="light"] .qa { --qa-bronze: #8a3f10; --qa-silver: #4d5a6b; --qa-gold: #8a6108; }
+  :root[data-theme="dark"] .qa { --qa-bronze: #d97c3f; --qa-silver: #a9b6c7; --qa-gold: #e0a521; }
+  .qa-sum { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; line-height: 1.55;
+    max-width: 1000px; }
+  .qa-sum b { color: var(--ink); font-weight: 700; }
+  /* Balanced columns, not a grid: the five stages differ in length, and a grid row is as
+     tall as its tallest card. */
+  .qa-grid { columns: 300px 4; column-gap: 14px; }
+  .qa-stage { break-inside: avoid; margin: 0 0 14px; background: var(--panel);
+    border: 1px solid var(--card-ring); border-radius: 14px; padding: 14px 16px 6px;
+    box-shadow: var(--shadow); }
+  .qa-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .qa-list { list-style: none; margin: 0; padding: 0; }
+  .qa-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 10px;
+    align-items: start; padding: 10px 0; border-top: 1px solid var(--hair); }
+  .qa-row:first-child { border-top: 0; }
+  .qa-ic { width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; box-sizing: border-box;
+    display: grid; place-items: center; font-size: 10.5px; font-weight: 800; line-height: 1; }
+  .qa--done .qa-ic { background: var(--domain); color: var(--page); }
+  .qa--done .qa-ic::after { content: "\2713"; }
+  .qa--warn .qa-ic { background: var(--accent); color: var(--page); }
+  .qa--warn .qa-ic::after { content: "!"; }
+  .qa--partial .qa-ic { border: 2px solid var(--accent);
+    background: conic-gradient(var(--accent) 0 50%, transparent 50% 100%); }
+  .qa--todo .qa-ic { border: 2px solid var(--muted); }
+  .qa--na .qa-ic { border: 2px dashed var(--muted); opacity: 0.6; }
+  .qa-lb { font-weight: 650; font-size: 13.5px; color: var(--ink); line-height: 1.35; }
+  .qa-dt { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin-top: 3px; }
+  .qa-st { grid-column: 2; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .qa--done .qa-st { color: var(--domain); }
+  .qa--warn .qa-st, .qa--partial .qa-st { color: var(--accent); }
+  .qa--na .qa-lb, .qa--na .qa-dt { opacity: 0.7; }
+  .qa-tier { display: inline-block; margin-left: 7px; padding: 0 5px; border-radius: 5px;
+    border: 1px solid currentColor; font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; vertical-align: 1px;
+    line-height: 1.5; }
+  .qa-tier--bronze { color: var(--qa-bronze); }
+  .qa-tier--silver { color: var(--qa-silver); }
+  .qa-tier--gold { color: var(--qa-gold); }
+  .qa-foot { margin: 0; font-size: 12px; color: var(--muted); }
+  .qa-foot a { color: var(--accent); }
 </style>
 
 <div class="wrap" data-aoi="Germany" data-aoi-key="germany">
@@ -957,6 +1005,49 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
             </table></div>
           </details>
         </div>
+    </div>
+  </section>
+
+  <!-- Written by `earthpv.quality.checklist_html` from this page's data, its config and the
+       review, decision and validation records; refreshed whenever a page is patched. -->
+  <section class="sec" id="quality">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Quality</div>
+        <div class="sec-title">What has been checked so far, and what is still open</div>
+      </div>
+    </div>
+    <div class="qa">
+    <p class="qa-sum"><b>This atlas shows Bronze.</b> 10 of 16 checks done, 2 under way. Silver still needs: model retrained on the checked leads.</p>
+<div class="qa-grid">
+<div class="qa-stage"><div class="qa-h">Detection from space</div><ul class="qa-list">
+<li class="qa-row qa--partial" data-check="model"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Model trained on the local map<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">A model trained on several countries' maps, Germany's among them (v4_combined_all); no comparison on a held-out German region is on record, and the retrain on Germany's checked leads is still to come.</div></div><span class="qa-st">In progress</span></li>
+<li class="qa-row qa--done" data-check="imagery"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Imagery over every populated cell<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">4,871 of the 4,886 cells of 0.1&deg; inside the border imaged, the median scene taken on 14 June 2025. The cells left out, hatched on the map, hold too few buildings and no mapped solar.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--done" data-check="precision"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Model outlines priced by measured precision<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">Each size and placement class is priced by the share of the model's outlines that turned out real, with recall measured on 160,622 mapped installations.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--warn" data-check="plausibility"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Plausibility check on every region<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">15 of 16 regions pass; 1 fail, on a high share of ground-mounted capacity or one cell carrying a region.</div></div><span class="qa-st">Done, with flags</span></li>
+</ul></div>
+<div class="qa-stage"><div class="qa-h">Ground truth from the map</div><ul class="qa-list">
+<li class="qa-row qa--done" data-check="osm"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Hand-mapped solar counted once<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">172,570 solar installations from OpenStreetMap, as of 4 September 2026, dissolved so a plant and the panels mapped inside it count once.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--done" data-check="ground_truth"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Local ground truth<span class="qa-tier qa-tier--silver" title="Needed for Silver">Silver</span></div><div class="qa-dt">160,622 mapped installations as the model's recall reference.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--done" data-check="leads"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Mapping leads published<span class="qa-tier qa-tier--bronze" title="Needed for Bronze">Bronze</span></div><div class="qa-dt">14,535 leads, plus 149 judged solar and waiting to be mapped, against OpenStreetMap as of 4 September 2026.</div></div><span class="qa-st">Done</span></li>
+</ul></div>
+<div class="qa-stage"><div class="qa-h">Checked by people</div><ul class="qa-list">
+<li class="qa-row qa--done" data-check="blobs"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Very large outlines judged (solar farm review)</div><div class="qa-dt">All 581 judged: 149 solar, 432 not solar.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--todo" data-check="large_review"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Large installations judged (review page)</div><div class="qa-dt">None of the 7,592 judged yet. One not yet judged is priced by the measured share of real outlines of its size.</div></div><span class="qa-st">Not yet</span></li>
+<li class="qa-row qa--done" data-check="leads_mapped"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">A third of the leads checked<span class="qa-tier qa-tier--silver" title="Needed for Silver">Silver</span></div><div class="qa-dt">Recorded on 13 November 2026: 100% of the leads and of the very large outlines of the 1 November 2026 lead file.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--todo" data-check="retrained"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Model retrained on the checked leads<span class="qa-tier qa-tier--silver" title="Needed for Silver">Silver</span></div><div class="qa-dt">The leads are checked; the retrain on them is still to come.</div></div><span class="qa-st">Not yet</span></li>
+</ul></div>
+<div class="qa-stage"><div class="qa-h">Installations below 400 m&sup2;</div><ul class="qa-list">
+<li class="qa-row qa--partial" data-check="small"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Installations below 400 m&sup2; estimated<span class="qa-tier qa-tier--gold" title="Needed for Gold">Gold</span></div><div class="qa-dt">Rooftops below 400 m&sup2; are estimated; farm arrays below 400 m&sup2; are not measured.</div></div><span class="qa-st">In progress</span></li>
+<li class="qa-row qa--done" data-check="small_holds"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">That estimate holds up against ground truth<span class="qa-tier qa-tier--gold" title="Needed for Gold">Gold</span></div><div class="qa-dt">Declared validated against the national register (MaStR) by the owner on 13 November 2026.</div></div><span class="qa-st">Done</span></li>
+<li class="qa-row qa--todo" data-check="roofclf_checked"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Rooftop estimate checked by people<span class="qa-tier qa-tier--gold" title="Needed for Gold">Gold</span></div><div class="qa-dt">The estimate below 400 m&sup2; prices roof area against the register, with no classifier; no cell drawn at random has been reviewed on imagery yet.</div></div><span class="qa-st">Not yet</span></li>
+</ul></div>
+<div class="qa-stage"><div class="qa-h">Independent checks</div><ul class="qa-list">
+<li class="qa-row qa--todo" data-check="glint"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Solar glint measured on the large installations<span class="qa-tier qa-tier--gold" title="Needed for Gold">Gold</span></div><div class="qa-dt">No glint survey of the large installations yet.</div></div><span class="qa-st">Not yet</span></li>
+<li class="qa-row qa--done" data-check="official"><span class="qa-ic" aria-hidden="true"></span><div class="qa-main"><div class="qa-lb">Set beside official figures</div><div class="qa-dt">Drawn beside MaStR register, nationally and by region; never used to tune or score the estimate.</div></div><span class="qa-st">Done</span></li>
+</ul></div>
+</div>
+<p class="qa-foot">As of 19 November 2026. A tag names the level that needs a check; <a href="https://open-energy-transition.github.io/earthpv/atlas-quality-levels/" target="_blank" rel="noopener">what the levels mean</a> &middot; <a href="https://open-energy-transition.github.io/earthpv/contribute/" target="_blank" rel="noopener">how to help</a>.</p>
     </div>
   </section>
 

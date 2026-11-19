@@ -3294,15 +3294,21 @@ def build_evidence_atlas(
     _pq = write_cell_geoparquet(cells, cell_cols, out)
     _pq_name = _pq.name if _pq else ""
     html = EVIDENCE_TEMPLATE.read_text()
+    badge = resolve_validation_badge(
+        aoi, derive_validation_score(aoi, central_buildings_path is not None, labels_dir),
+        validation_score)
+    from earthpv import quality
+
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": atlas_name(title),
         "__H1__": atlas_name(title),
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
-        "__VALIDATION_BADGE__": resolve_validation_badge(
-            aoi, derive_validation_score(aoi, central_buildings_path is not None, labels_dir),
-            validation_score),
+        "__VALIDATION_BADGE__": badge,
+        # What has been checked and what is open (`earthpv.quality`); the patch scripts
+        # recompute it whenever they touch the page.
+        "__QUALITY_HTML__": quality.checklist_html(aoi, data["totals"], badge, density_dir),
         "__AOI_TITLE__": title,
         # The page fetches docs/assets/labels/calibration_areas/<aoi>.geojson by this key
         # (scripts/publish_calibration_areas.py), so editor links work without a rebuild.
