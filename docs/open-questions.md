@@ -786,3 +786,75 @@ environment. Open for the owner: whether to run them, which PyPSA-Eur and PyPSA-
 version and config, and whether EarthPV's layer enters as a layout or as powerplantmatching
 `custom_powerplants`.
 
+### 25. Glint as an independent audit of the review verdicts (scoped 2026-11-20)
+
+**Why.** Every judged blob and large lead enters capacity on one reviewer's eye: a `pv`
+blob counts whole, a judged large lead at P(real) 1 (roofs at 1/2.5 of the outline). That
+is a lot of capacity. India's judged parks moved Best from 82,574 to 103,037 MWp, and
+Turkey's from 13,103.0 to 17,592.6. Glint is the only check from space that depends on
+neither the model nor the mappers, which is why Gold asks for it
+([Atlas quality levels](atlas-quality-levels.md)). No judged outline has been read yet:
+every glint survey so far drew its targets from OSM or from unjudged model candidates.
+
+**The population (applied verdicts, 2026-11-20).** 4,495 blobs in 17 countries (2,577
+`pv`, 1,918 not) and 8,338 large leads in 11 countries (5,230 `pv`, 3,108 not), all 1 ha
+and up, in `results/<aoi>_oversize_review/` and `results/<aoi>_large_review/`
+(`review.geojson` carries the outline and `review_verdict`). Largest `pv` sets: Italy
+2,978 large + 297 blobs, India 1,427 blobs, California 823 + 70, Turkey 396. Largest
+not-PV sets: Italy 1,438 + 79, Nigeria 495 + 157, Germany 432, Turkey 377, California
+325 + 54.
+
+**What it can and cannot say.** One outline at a time, nothing decisive. A spike on a `pv`
+outline confirms it, but silence proves nothing: 27% of Pakistan's mapped installations
+above 50,000 m&sup2; never spiked in two years, and at France's latitude only about 8% of
+south-facing fixed arrays can validate at all. So glint never overturns a verdict, the
+same "boost, never demote" rule as for `rank_score`. Across many outlines it gives three
+things:
+
+1. **The review's precision.** Compare the detection rate on owner-`pv` outlines (r) with
+   the rate on OSM installations of the same size bin in the same country (S) and on
+   not-PV outlines (f). The share of `pv` verdicts that are real is about
+   (r &minus; f) / (S &minus; f), the algebra `calibrate-candidates --glint-sample` already
+   uses.
+2. **A false-spike floor on the right surfaces.** The 2.0% floor was measured on verified
+   PV-free buildings, and Pakistan's 8.7% on model negatives that hold unmapped PV. France
+   and India have no control at all, so neither pose survey has a false-fit rate, and 13
+   ("Glint and pose: untested refinements, and what a longer window buys") names the
+   unmeasured surfaces: wet pans, ponds, basins. The not-PV verdicts are thousands of
+   human-checked surfaces that fooled the model (greenhouses, metal and bright roofs,
+   pans, rock), measurable per country.
+3. **A re-check list.** Not-PV outlines with a validated, equator-facing fit go back on the
+   review page for the owner. Expect mostly greenhouses, metal roofs and wind-roughened
+   water, which reflect too; a few may be parks built after the Esri capture the reviewer
+   saw. The script lists them and never changes a verdict.
+
+**Limits.** S exists only where an OSM pose survey does: Pakistan (`country2000`, two
+years), France (`france_pose`) and India (`india2000_pose`, both 2025-10-01 to
+2026-10-01). Any other country needs a matched OSM draw too, read over the same window.
+At European latitudes (Germany, Poland, Belgium, the Netherlands) S is low, and the
+precision interval may be too wide to say anything; India, Pakistan, Egypt, Yemen, Texas
+and Mexico suit glint best. A blob often merges several plants of different pose, so count
+detection over parts (`parts-pull`), not a whole-outline fit. Cost: France's 6,337 targets
+took about 3 days of pulling beside a compose, and compose is bandwidth-bound, so a pull
+slows whichever compose runs alongside it.
+
+**Steps.**
+1. India pilot: `glint_pose_survey.py targets --name india_verdicts --source
+   results/india_oversize_review/review.geojson --id-col candidate_index` (all 1,640 judged
+   blobs; join `review_verdict` back by id), `pull` over `india2000_pose`'s window,
+   `parts-pull`, `analyze`, then compare detection per size bin with `india2000_pose`.
+   About 1,600 targets, a day or two of network.
+2. If owner-`pv` outlines glint near the OSM rate and not-PV outlines stay low: a
+   stratified sample of about 150 `pv` and 150 not-PV per country (all of them where there
+   are fewer) for Turkey, Italy, Texas, California and South Africa, each with a matched
+   OSM draw where no survey exists.
+3. Report one audit line per country (detection on `pv`, on not-PV and on OSM; the
+   precision estimate with its interval) and the re-check list.
+
+**Open for the owner:** whether to run it, and when (beside a compose or after it); where
+the audit line appears (each atlas's quality section, the review hub, or the docs only);
+whether a glint audit of verdicts should count toward anything, such as Gold, whose glint
+rule today names OSM installations only. It overlaps 13's step that pulls four years for
+the large-lead and blob review populations: if both run, they should share one pull
+rather than read the same outlines twice.
+
