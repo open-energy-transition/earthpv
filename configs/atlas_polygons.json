@@ -435,20 +435,20 @@
     "texas": {
       "file": "texas_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/texas_pv_polygons.parquet",
-      "size_bytes": 4233990,
+      "size_bytes": 2803735,
       "format": "GeoParquet 1.1, zstd",
-      "made": "2026-11-19",
-      "n_model": 7435,
-      "n_model_leads": 7016,
-      "n_model_reviewed": 1679,
+      "made": "2026-11-20",
+      "n_model": 3077,
+      "n_model_leads": 2505,
+      "n_model_reviewed": 347,
       "n_osm": 12948,
       "n_osm_csp": 0,
       "osm_as_of": "2026-10-29",
       "min_distance_m": 100,
       "sources": {
-        "n_candidates": 7560,
-        "n_outside": 125,
-        "pred": "data/predictions/texas",
+        "n_candidates": 3188,
+        "n_outside": 111,
+        "pred": "data/predictions_resnet_20261119/texas",
         "raw_osm": [
           "data/labels/texas_overpass_solar.parquet"
         ],

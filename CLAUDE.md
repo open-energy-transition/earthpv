@@ -1125,8 +1125,8 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | 8.3 of the model's 21.3 MWp lies beyond the border |
 | Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 19,972.6 | a map of the ground-mounted fleet |
 | Denmark | `v37r_resnet50_denmark` ep 10 at 0.95 | 2,639.9 / 2,683.1 | localized ResNet-50 since 2026-11-19; thin Nordjylland holdout |
-| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 52,249.8 | state AOI, counties as regions |
-| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 32,198.9 | state AOI; small-scale PV unmeasured |
+| Texas | `v39r_resnet50_texas` ep 18 at 0.3 | 45,712.0 / 51,488.0 | state AOI, counties as regions; localized ResNet-50 since 2026-11-20, OSM screen still v39's |
+| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 32,198.9 | state AOI; small-scale PV unmeasured; ResNet v38r rejected (misses large parks) |
 
 Country points still in force (write-ups in `docs/results/<country>.md`):
 - **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
@@ -1178,6 +1178,12 @@ Country points still in force (write-ups in `docs/results/<country>.md`):
   at about 1.27-1.29x panel over inverter. Both review pages judged (owner, 2026-11-18): an
   EIA plant within 500 m predicts a park verdict (Texas 19 of 21 blobs, California 28 of 29),
   and Texas's roof leads are mostly not PV (37 of 180 solar; 95 of the rest bright roofs).
+  Texas moved to its ResNet run (2026-11-20, `data/predictions_resnet_20261119/texas`): the
+  verdicts were carried over by overlap (`scripts/carry_review_verdicts.py`, at least half of
+  a new outline inside judged ones), leaving 93 blobs and 304 large leads unjudged. Before a
+  localized model replaces another, compare the OSM ground screen of both runs by park size:
+  California's ResNet won its holdout (no large park in it) but detects 140 of 276 km² of
+  the parks above 3 km².
   Overpass refused Texas's CSP area scan; `solar_thermal_plants.py --pbf` read the Geofabrik
   extract. No Ember line (customs data are national).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and

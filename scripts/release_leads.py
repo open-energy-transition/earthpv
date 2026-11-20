@@ -169,6 +169,10 @@ SOURCES = {
     # Denmark's atlas is the localized ResNet-50 run (v37r) since 2026-11-19;
     # data/predictions/denmark holds the TerraMind v37 run's.
     "denmark": {"pred": "data/predictions_resnet_20261119/denmark"},
+    # Texas's atlas is the localized ResNet-50 run (v39r) since 2026-11-20;
+    # data/predictions/texas holds the TerraMind v39 run's. California stays on its TerraMind
+    # v38 run: its ResNet (v38r) misses much of the state's largest parks.
+    "texas": {"pred": "data/predictions_resnet_20261119/texas"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
     "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {}, "spain": {},
     "belgium": {}, "italy": {}, "luxembourg": {}, "netherlands": {},

@@ -693,43 +693,43 @@
     },
     "texas": {
       "file": "texas_pv_new_leads.geojson",
-      "n": 2124,
-      "size_bytes": 1913190,
+      "n": 1559,
+      "size_bytes": 1677805,
       "osm_as_of": "2026-11-10",
       "min_distance_m": 100,
-      "made": "2026-11-19",
+      "made": "2026-11-20",
       "steep": {
         "slope_deg": 15.0,
         "max_area_m2": 1000.0,
         "cap_deg": 30.0,
         "dropped": 0,
         "review": 0,
-        "no_dem": 8
+        "no_dem": 3
       },
       "lowconf": {
         "placement": "no_building",
         "max_confidence": 0.9,
-        "dropped": 3209
+        "dropped": 506
       },
       "blobs": {
         "file": "texas_pv_blob_leads.geojson",
-        "n": 4,
-        "size_bytes": 17338,
+        "n": 93,
+        "size_bytes": 460687,
         "min_area_m2": 100000.0
       },
       "confirmed": {
         "file": "texas_pv_confirmed_leads.geojson",
         "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/texas_pv_confirmed_leads.geojson",
-        "n": 134,
-        "size_bytes": 827196,
-        "n_solar_farm": 51,
-        "n_large_installation": 83,
-        "area_m2": 125487508.7,
+        "n": 111,
+        "size_bytes": 827124,
+        "n_solar_farm": 63,
+        "n_large_installation": 48,
+        "area_m2": 109197327.1,
         "mapped_since": 0
       },
       "judged_not_pv": {
-        "leads": 756,
-        "blobs": 789
+        "leads": 142,
+        "blobs": 94
       }
     },
     "turkiye": {

@@ -73,6 +73,40 @@ a margin beyond the tie band, and ships at its own threshold, 0.95. That thresho
 matched one, and for an averaged checkpoint a matched threshold this high can lose arrays
 over whole cells (the averaging note in `CLAUDE.md`); the published page uses it as chosen.
 
+### A localized ResNet (v38r), built and not shipped, 2026-11-20
+
+`v38r_resnet50_california` is the released v28's model, a ResNet-50 pretrained on
+SSL4EO-S12, trained on `v38`'s corpus with `v38`'s recipe (`scripts/run_resnet_local.sh`).
+On Santa Clara County it beats both: at 0.95 its pixel precision is 0.619 against `v38`'s
+0.615 and it finds 1,134 of 1,692 mapped arrays of 400 m&sup2; and up against 854 (rooftop
+202 against 124 of 448, ground 914 against 712 of 1,217); against `v5` at `v5`'s best
+precision, 0.553, it finds 890 of the 1,254 installations of 500 m&sup2; and up against 625,
+pixel IoU 0.411 against 0.274. The owner asked on 19 November for the page to move to it,
+and the national run was built (`data/predictions_resnet_20261119/california`).
+
+It was not published. The OSM ground screen run on its rasters showed that it misses much
+of the state's largest parks, which Santa Clara does not contain. Median share of each
+mapped park outline (imaged) the model detects:
+
+| Mapped parks by size | Parks | TerraMind `v38` at 0.95 | ResNet `v38r` at 0.95 | `v38r` at 0.1 |
+| --- | ---: | ---: | ---: | ---: |
+| 0.05 to 0.3 km&sup2; | 259 | 0.958 | 0.970 | 0.992 |
+| 0.3 to 1 km&sup2; | 170 | 0.981 | 0.811 | 0.945 |
+| 1 to 3 km&sup2; | 52 | 0.973 | 0.828 | 0.936 |
+| 3 to 30 km&sup2; | 48 | 0.967 | 0.375 | 0.573 |
+
+Over the 48 parks above 3 km&sup2; (307 km&sup2; mapped) it detects 140 km&sup2; against
+`v38`'s 276; 95 of the 270 parks above 0.3 km&sup2; are less than half detected, against 20.
+Whole blocks of a park stay empty. It is not the threshold (at 0.1 it detects 181
+km&sup2;) and not the inference window (one whole 0.1&deg; cell at once gives the same). The
+page stays on `v38` (owner, 2026-11-20). Verified would not have moved, since the published
+OSM screen is kept, but Best would have fallen to 30,812.5 MWp, with 34 outlines above the
+cap and 429 large leads left to judge after the published verdicts were carried over by
+overlap. Denmark's localized ResNet detects Denmark's parks as fully as its TerraMind did, and
+Texas's within 6% of the area, so both shipped
+([Denmark](denmark.md#the-localized-resnet-v37r-2026-11-19),
+[Texas](texas.md#the-localized-resnet-v39r-2026-11-20)).
+
 ## Checked against EIA's plants
 
 EIA-860M lists California's plants with coordinates, so the same three checks as in

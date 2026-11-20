@@ -4,8 +4,9 @@
 # 254 counties (`density.subnational_units`), and its hand-mapped solar is clipped to the
 # state's own outline. No calibration quadrats, no record-level register used, so the
 # builder's default no-ground-truth text stands. The segmentation is localized on Texas's
-# own OpenStreetMap labels and tied v5 on the held-out Bexar County, winning on pixel IoU
-# (results/texas_checkpoint_decision.json).
+# own OpenStreetMap labels and beat v5 on the held-out Bexar County
+# (results/texas_checkpoint_decision.json); since 2026-11-20 it is the ResNet-50 v39r, which
+# found more there than the TerraMind v39 it replaced. The OSM ground screen is v39's.
 #
 # Numbers belong in docs/results/texas.md; nothing here quotes a figure a rebuild could
 # change.
@@ -58,14 +59,15 @@ confidence:
     - >-
       <b>Some mapped parks are not yet in EIA's inventory.</b> Several large parks mapped in
       OpenStreetMap lie far from any plant EIA lists as operating in September 2026. The
-      model finds panels over nearly all of them in this summer's imagery, so they are
-      counted; they are probably newer than EIA's inventory, or EIA places them elsewhere.
+      segmentation run that screened the mapped parks finds panels over nearly all of them in
+      this summer's imagery, so they are counted; they are probably newer than EIA's inventory, or EIA places them elsewhere.
     - >-
       <b>Very large model outlines count only once checked.</b> A model outline above
       100,000 m&sup2; counts only when it is mapped or a person has judged it solar, and
-      Texas has hundreds of them waiting, as well as large model outlines below that size.
-      Few of them lie near a plant in EIA's inventory, so most are probably not solar.
-      Mapping a real park brings it into the verified layer.
+      Texas has some waiting, as well as large model outlines below that size. Most were
+      judged on an earlier run's review, and the verdicts were carried over to this one where
+      an outline mostly overlaps one already judged; the rest are new outlines nobody has
+      judged. Mapping a real park brings it into the verified layer.
     - >-
       <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
       imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A

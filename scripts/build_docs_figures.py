@@ -3056,8 +3056,9 @@ INTERACTIVE = [
     # docs/results/denmark.md explains.
     ("results/denmark_pv_evidence_atlas.html", "denmark_pv_evidence_atlas.html"),
     # Texas: a US state run as an AOI of its own (counties as regions), segmentation-only,
-    # on its own LOCALIZED checkpoint v39_combined_texas (tied v5 on the held-out Bexar
-    # County, won on pixel IoU). docs/results/texas.md explains.
+    # on its own LOCALIZED checkpoint, since 2026-11-20 the ResNet-50 v39r_resnet50_texas (it
+    # beat v5 and the TerraMind v39_combined_texas on the held-out Bexar County; run in
+    # data/predictions_resnet_20261119). docs/results/texas.md explains.
     ("results/texas_pv_evidence_atlas.html", "texas_pv_evidence_atlas.html"),
     # California: the second US state run as an AOI of its own (counties as regions),
     # segmentation-only, on its own LOCALIZED checkpoint v38_combined_california (an average
