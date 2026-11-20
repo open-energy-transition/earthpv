@@ -727,3 +727,62 @@ for the EU core plus Switzerland, 6 to 8 for the whole area) and disk (about 150
 `docs/issues/europepv-synchronous-area-plan.md`. Open for the owner: build it at all, the
 scope, the disk, and GPU sharing with the ResNet runs.
 
+### 24. What a PV map changes in an energy model: two PyPSA studies (scoped 2026-11-20)
+
+**Why.** EarthPV's carbon case for grid operations is estimated, not measured, and it is
+small. Better load forecasts where PV is invisible to the operator come to about 0.5 Mt
+CO2/yr worldwide (90% 0.15-2). The inputs: 60-250 GW of PV no operator can see; 1.25-1.65
+MWh/kWp; 4-20 kg CO2 saved per MWh of solar whose day-ahead forecast moves from blind to
+NWP-grade; 25-75% of that gain enabled by the map; 40-95% adoption. The per-MWh anchor is
+[Kahrl et al. 2026](https://escholarship.org/uc/item/3gw104d7): 1.5-3.7 Mt CO2 on about 234
+TWh of solar in the Southeast US, persistence against NAM. In the EU, where TSOs already
+hold registers, the same approach gives about 0.1-1 Mt/yr: 369 TWh of solar in 2025
+(Ember), at that per-MWh range, with 5-15% of the gain from capacity and location data.
+Orientation from the glint pose surveys adds about 0.01-0.1 Mt: it covers installations of
+1 ha and up, and its sample is censored to the observable azimuth wedge (13, "Glint and
+pose: untested refinements, and what a longer window buys").
+
+The larger effect is probably in planning, and nothing measures it. Operators and planners
+who do not know what is installed keep fossil-heavy margins: connection limits, firm
+capacity, storage and lines sited for PV in the wrong places. A conversion for scale, not an
+estimate: one GW of PV connected a year sooner avoids roughly 0.5-1.3 Mt in that year. For
+funders, the planning effect stays "to be measured" until the two studies below give it a
+number.
+
+**Study A, Europe: does PyPSA-Eur's PV layout matter?** PyPSA-Eur has no observed PV
+geography outside Germany (master, checked 2026-11-20):
+- Pathway runs (`add_existing_baseyear.add_existing_renewables`) spread IRENA's national
+  solar totals over each country's buses in proportion to land-eligible potential
+  (`p_nom_max`) and split every country 50/50 into rooftop and utility
+  (`solar_rooftop_ratio: 0.5`).
+- Overnight runs attach powerplantmatching's plants: GEM's Global Solar Power Tracker, all
+  of MaStR for Germany, JRC for Italy, Croatia, Serbia and Slovakia. The IRENA top-up is off
+  by default (`from_irenastat: false`), so rooftop PV outside Germany is largely missing.
+- powerplantmatching reads OSM only to confirm plants of 1 MW and up that another source
+  lists. Its last harmonized per-unit European list (OPSD) stops at 2020 data.
+
+Run Germany three times on the same network and weather year, with three layouts: the
+potential-weighted default, EarthPV's per-cell layer, and MaStR
+(`~/.open-MaStR/data/sqlite/open-mastr.db`) as truth. Compare line loading and congestion,
+curtailment, grid and storage expansion, and CO2. Default minus MaStR is what the model gets
+wrong today; EarthPV minus MaStR is how much of that EarthPV fixes. Then one country with no
+register in powerplantmatching (Spain or Poland; Italy has JRC's plant list), default
+against EarthPV only, to show the sensitivity where it matters.
+
+**Study B, Pakistan: what does unseen PV do to a capacity plan?** A PyPSA-Earth
+capacity-expansion run with and without the PV the operator cannot see: the atlas's Best
+(34.5 GWp) against about 6 GW officially net-metered. Run the low and high ends of Best's 90%
+interval too, and a variant at the grid-load pilot's 9.4 GWp of grid-displacing PV (18, "Grid
+load as a second, physical measure of the level"), since PV that never displaces grid supply
+changes no plan. Compare firm capacity built or kept, fuel, CO2 and curtailment. Pakistan's
+below-400 m&sup2; half rests on a rescoring nobody has reviewed (3, "The random-cell
+validation has never been logged"), so read the result as a range.
+
+**Prerequisites.** Both studies need hourly PV per cell, which nothing here produces yet:
+capacity per cell x pose mix x irradiance, the step 18 names. atlite layouts
+on the ERA5 0.25-degree grid exist for Pakistan and India (`scripts/era5_layout.py`,
+untracked; outputs in `data/era5_grid/`), and Germany's needs a run. atlite is in no pixi
+environment. Open for the owner: whether to run them, which PyPSA-Eur and PyPSA-Earth
+version and config, and whether EarthPV's layer enters as a layout or as powerplantmatching
+`custom_powerplants`.
+
