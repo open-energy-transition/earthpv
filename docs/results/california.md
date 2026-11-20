@@ -107,6 +107,38 @@ Texas's within 6% of the area, so both shipped
 ([Denmark](denmark.md#the-localized-resnet-v37r-2026-11-19),
 [Texas](texas.md#the-localized-resnet-v39r-2026-11-20)).
 
+### A size hybrid, 2026-11-20
+
+The owner asked whether the two could be combined, the ResNet for its small arrays and the
+TerraMind for the large parks. `scripts/build_hybrid_prob.py` wrote a third run
+(`data/predictions_hybrid_20261120`): the ResNet's probability everywhere, and the higher of
+the two inside each of the TerraMind's 246 outlines of 0.3 km&sup2; and up (546 km&sup2;),
+the size where the ResNet starts to lose. The published pipeline then ran on it, with the
+owner's verdicts carried over by overlap as for the ResNet run (`results/california_hybrid/`):
+
+| | TerraMind `v38` (published) | ResNet `v38r` | Hybrid |
+| --- | ---: | ---: | ---: |
+| Best (MWp) | 32,198.9 | 30,812.5 | **32,220.9** |
+| Verified (MWp) | 27,118.1 | 27,118.1 | 27,118.1 |
+| Mapped parks above 0.3 km&sup2;, area detected | 437 km&sup2; | 257 km&sup2; | 383 km&sup2; |
+| of the 270 such parks, less than half detected | 20 | 95 | 45 |
+| Santa Clara: mapped arrays of 400 m&sup2; and up found (of 1,692) | 854 | 1,134 | **1,134** |
+| Unmapped outlines up to 0.1 km&sup2;, expected real | 1,177 | 2,207 | 2,079 |
+| Left to judge, above the cap and large leads | 0 and 28 unsure | 34 and 429 | 21 and 422 |
+
+"Expected real" sums the calibration table's P(real) over the outlines, and P(real) is the
+share of each size bin that is mapped, so read it as a rough count. No TerraMind outline of
+0.3 km&sup2; and up reaches the Santa Clara cells, so on the holdout the hybrid is the
+ResNet. It recovers most of the large parks, not all: where the TerraMind's own outline of a
+park is in pieces below 0.3 km&sup2;, the park stays the ResNet's. Best is the TerraMind
+page's, because the extra arrays the ResNet finds sit in cells whose Best is already floored
+at the mapped capacity. The gain is about 900 more likely real unmapped arrays, mostly of
+400 m&sup2; to 1 ha, as mapping leads; the cost is 443 outlines to judge again and a second
+model in the pipeline. The page stays on `v38`, and the hybrid is documented as an option
+([Pretrained model](../pretrained-model.md#the-terramind-alternative-v14)). It would not
+suit Texas: of the TerraMind's outlines of 0.3 km&sup2; and up that the owner judged there,
+480 of 524 were not solar.
+
 ## Checked against EIA's plants
 
 EIA-860M lists California's plants with coordinates, so the same three checks as in

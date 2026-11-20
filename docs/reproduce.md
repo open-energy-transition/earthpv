@@ -41,6 +41,10 @@ checkpoint is published as a GitHub release:
 pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v28.ckpt, SHA-256 checked
 ```
 
+The TerraMind released before it stays available as the alternative,
+`pixi run fetch-model -- --model terramind`
+([when to use it](pretrained-model.md#the-terramind-alternative-v14)).
+
 Every `--checkpoint` below can point at it. What it was trained on, how it was chosen and
 where it is weak are on [Pretrained model](pretrained-model.md).
 

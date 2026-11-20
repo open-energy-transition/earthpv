@@ -213,14 +213,21 @@ manually. The practical check is a small end-to-end run: `chips --aoi germany --
 **The released segmentation model is v28 (owner, 2026-11-12)**, fetched with `pixi run
 fetch-model`: `scripts/fetch_model.py` downloads `earthpv_segmentation_v28.ckpt` from release
 `segmentation-model-v28-2026-11-12` into `data/models/release/` and checks its SHA-256;
-`new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It is
+`new_region.py plan` and the setup docs take the file name from its `RELEASE` (the default
+entry of `RELEASES`). **v14, the TerraMind released 2026-10-23, stays released as the
+alternative (owner, 2026-11-20)**: `pixi run fetch-model -- --model terramind` (Apache-2.0,
+33 MB, threshold 0.3), for deserts, dark open ground and very large parks; before choosing
+in a country of large parks, compare both runs' OSM ground screens by park size.
+`scripts/build_hybrid_prob.py` combines two runs by outline size (one model everywhere, the
+other inside its own outlines above a size; California's test in
+`docs/results/california.md#a-size-hybrid-2026-11-20`). It is
 `v28_resnet50_south_africa/last.ckpt` (ResNet-50 from SSL4EO-S12 on v14's corpus, EMA weights
 after a fixed 42-epoch budget) put through `scripts/slim_checkpoint.py` (139 MB, identical
 predictions), run at threshold 0.3 (`results/release_model_benchmark_v28.csv`,
 `docs/pretrained-model.md`). **Every published atlas runs on its own country's checkpoint; the
 release changes no published number.** To release a newer model: slim it, upload it with
 `SHA256SUMS`, `MODEL_CARD.md`, `LICENSE`, `NOTICE`, its config and benchmark to a new tag,
-update `RELEASE`, and redo the page's tables. **The weights are CC BY 4.0** (the SSL4EO-S12
+update its entry in `RELEASES`, and redo the page's tables. **The weights are CC BY 4.0** (the SSL4EO-S12
 licence; `NOTICE` carries the SSL4EO-S12, OpenStreetMap and Copernicus attributions); detections
 stay ODbL like every data output. The config's recipe (`ema`, `jitter`, the warmup-cosine
 `scheduler`) needs `train.py` options that are not on main yet.

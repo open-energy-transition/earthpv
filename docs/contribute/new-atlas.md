@@ -62,7 +62,7 @@ git switch -c atlas/YOUR_AOI
 pixi install                # the data pipeline
 pixi install -e ml          # PyTorch, a large download
 pixi run -e ml gpu-check    # should print your card's name
-pixi run fetch-model        # the released detection model, 33 MB
+pixi run fetch-model        # the released detection model (ResNet-50), 139 MB
 ```
 
 ## 2. Check the country

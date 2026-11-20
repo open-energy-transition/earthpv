@@ -9,9 +9,11 @@ cells (see [How it was chosen](#how-it-was-chosen)).
 **[Download from the release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v28-2026-11-12)**
 &nbsp;·&nbsp; `earthpv_segmentation_v28.ckpt` &nbsp;·&nbsp; SHA-256 `0c2a24b5...`
 
-It replaces the TerraMind model released on 2026-10-23
-([`segmentation-model-v14-2026-10-23`](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23)),
-which stays downloadable.
+It replaced the TerraMind model released on 2026-10-23
+([`segmentation-model-v14-2026-10-23`](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23))
+as the default. That model stays released as the alternative, for deserts, dark open ground
+and very large parks, where a TerraMind can find more
+([The TerraMind alternative](#the-terramind-alternative-v14)).
 
 ## Set up EarthPV with it
 
@@ -22,6 +24,7 @@ pixi install              # data pipeline
 pixi install -e ml        # adds PyTorch (cu126) and TerraTorch, a multi-GB solve
 pixi run -e ml gpu-check  # should print your GPU
 pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v28.ckpt, checksum verified
+pixi run fetch-model -- --model terramind   # the TerraMind alternative, earthpv_segmentation_v14.ckpt
 ```
 
 `fetch-model` uses the standard library only, keeps an existing file whose checksum
@@ -163,7 +166,9 @@ one, which neither finds), and more or as many ground arrays in nine. It finds f
 against 99%), Spain (85% against 89%), Turkey (96.9% against 98.2%) and Egypt (22 arrays):
 in deserts and on dark open ground a localized model is still the better choice. A ResNet
 localized the same way to Denmark found 66% of its holdout's arrays against 43% for
-Denmark's localized TerraMind.
+Denmark's localized TerraMind. The one localized to California also found more on its
+holdout, but misses much of that state's largest parks
+([The TerraMind alternative](#the-terramind-alternative-v14)).
 
 The full comparison is in the [experiment register](experiments.md#a-convolutional-network-instead-of-terramind-v28-resnet-50-2026-11-12),
 and every row behind these tables is in
@@ -183,6 +188,58 @@ calibration areas, where every visible panel is mapped, and over 1,000 South Afr
 
 The bins hold 9 to 67 arrays each, so read them as a direction. In Pakistan's areas v28
 draws no more unmapped objects than v16 (0.17 against 0.21 per km&sup2;).
+
+## The TerraMind alternative (v14)
+
+The TerraMind model released on 2026-10-23 stays released as the alternative to this one
+(owner, 2026-11-20). It is TerraMind 1.0 Tiny fine-tuned on the same corpus
+(`v14_combined_south_africa`, epoch 41), 33 MB and 8.2 million parameters. It reads the same
+input and runs the same way, at the same threshold:
+
+```bash
+pixi run fetch-model -- --model terramind   # -> data/models/release/earthpv_segmentation_v14.ckpt
+pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+pixi run earthpv postprocess --aoi <aoi> --threshold 0.3 --max-building-dist 30
+```
+
+**Where a TerraMind can be the better choice:**
+
+- **Deserts and dark open ground.** On the holdouts of Namibia and Morocco a TerraMind finds
+  more ground-mounted arrays than v28 (above), and one trained on v28's own corpus does too,
+  so the gap is the architecture.
+- **Very large parks.** California's localized ResNet (v38r) won its holdout, which holds no
+  large park, but over the 48 mapped parks above 3 km&sup2; it detects 140 km&sup2; where
+  California's localized TerraMind detects 276
+  ([California](results/california.md#a-localized-resnet-v38r-built-and-not-shipped-2026-11-20)).
+  The released models show no such gap on the parks their whole-cell samples hold: over the
+  22 mapped parks of 0.3 to 3 km&sup2; inside the South African and Turkish cells both ran
+  on, v28 and v14 each detect a median 0.98 to 1.0 of the outline. Those samples hold no park
+  above 3 km&sup2;, so for parks that size the released pair is untested.
+
+**Check before choosing.** In a country whose capacity sits in large parks, run both and
+compare how much of each mapped park each detects, by park size, with the OSM ground screen
+on each run's rasters:
+
+```bash
+pixi run python scripts/screen_osm_ground_perimeters.py --aoi <aoi> \
+    --labels data/labels/<aoi>_overpass_solar.parquet --prob-dir <run>/<aoi>/prob \
+    --min-area-m2 50000 --threshold 0.3 --out <run>_screen.csv
+```
+
+`det_frac` is the share of each mapped outline the model detects. Compare it park by park
+between the two runs; a model that leaves large parks half empty loses capacity wherever
+those parks are not yet mapped.
+
+**Both at once: the size hybrid.** `scripts/build_hybrid_prob.py` writes a third run: one
+model's probability everywhere, and the higher of the two inside every outline the other
+model drew above a set size. Everything downstream runs on it as on any run. California's
+test, the ResNet everywhere and the TerraMind inside its outlines of 0.3 km&sup2; and up
+([California](results/california.md#a-size-hybrid-2026-11-20)), kept the ResNet's holdout
+result exactly and recovered most of the large parks (383 of the TerraMind's 437 km&sup2;),
+while Best stayed at the TerraMind page's (32,221 against 32,199 MWp). What it adds is about
+900 more likely real unmapped arrays as mapping leads. It suits only a country where the
+TerraMind's large outlines are mostly real: of those a person judged, 40 of 52 in
+California were parks, 44 of 524 in Texas.
 
 ## Limits
 
@@ -211,6 +268,10 @@ they are fine-tuned from (Wang et al., 2023, distributed by
 [TorchGeo](https://huggingface.co/torchgeo/resnet50_sentinel2_all_moco)). The release carries
 the licence text as `LICENSE` and the attributions as `NOTICE`. Keep `NOTICE` with the weights
 if you redistribute them or a fine-tune of them.
+
+The TerraMind alternative (v14) is released under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), TerraMind's licence; its
+release carries its own `LICENSE` and `NOTICE`.
 
 Credit SSL4EO-S12, &copy; OpenStreetMap contributors (the training labels, ODbL 1.0) and
 Copernicus Sentinel-2 when you publish results made with it, and cite this repository. The

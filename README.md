@@ -141,6 +141,7 @@ GTX 1060 is enough.
 git clone https://github.com/open-energy-transition/earthpv.git && cd earthpv
 pixi install && pixi install -e ml     # data pipeline, then PyTorch and TerraTorch
 pixi run fetch-model                   # downloads the checkpoint and checks its SHA-256
+                                       # (-- --model terramind: the TerraMind alternative)
 
 pixi run python scripts/new_region.py add --aoi <aoi> --bbox <bbox> --iso3 <ISO3>
 pixi run earthpv compose --aoi <aoi> --window <clear-season START:END>    # hours
