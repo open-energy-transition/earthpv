@@ -831,6 +831,12 @@ provinces (`regions.json`, rebuilt with `--admin1`) are picked one by one, a sta
 its geoBoundaries name, which `compose._aoi_boundary` matches. VIDA barely reaches China. The
 globe follows the site's light/dark choice; every colour that differs by theme is in `THEMES`
 in landing.js (stars from `stars.json`, rebuilt with `--stars bsc5.dat`).
+**Every page's social card (`og:image`) is this globe**: `pixi run docs-screenshots
+social-preview` serves the built site, renders its root at 1200x630 without buttons or
+legend into `docs/assets/figures/social-preview.png` and writes the PNG's hash to
+`docs/overrides/partials/social-image-version.html` (the templates' `?v=`, so social sites
+refetch). Its figures are fixed in the PNG: **re-run it whenever an atlas is added or a Best
+changes.**
 
 **The site opens dark whatever the system's theme (owner, 2026-11-18)**: `mkdocs.yml` lists the dark
 palette first with no `media` (landing.html writes the same order, dark 0, light 1), and

@@ -37,11 +37,25 @@ Firefox driven over its remote-debugging socket, and the shot is taken once the 
 it is ready (a `ready` expression per Shot; the atlas sets `data-atlas-ready` when its map
 has drawn a complete frame). The BiDi client below is stdlib only, so the script still
 needs nothing beyond Firefox.
+
+**The social card is the landing globe (2026-11-20).** `social-preview` is the site root
+at 1200x630, the size Open Graph and X cards use, with the header buttons and the legend
+hidden. The globe draws from fetched JSON, which does not load from `file://`, so a Shot
+with `site_path` builds the MkDocs site into the stage (docs env) and serves it over
+localhost instead of opening a staged copy. Its figures (share mapped, GW, the places) are
+fixed in the PNG: **re-run `pixi run docs-screenshots social-preview` whenever an atlas is
+added or its Best changes**, i.e. after `scripts/build_atlas_pages.py`. The PNG's short
+hash goes to `docs/overrides/partials/social-image-version.html`; both page templates
+append it to the image URL (`?v=`), so social sites fetch the new picture instead of their
+cached one.
 """
 
 from __future__ import annotations
 
 import base64
+import functools
+import hashlib
+import http.server
 import json
 import os
 import shutil
@@ -49,6 +63,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,6 +88,14 @@ class Shot:
     max_width: int = 1600       # downscale target for the committed PNG
     # JS expression that is true once the page has finished drawing; None = the load event.
     ready: str | None = None
+    # Serve the built MkDocs site and open this path ("" is the site root) instead of a
+    # staged copy of `src`: for pages that fetch their data, which file:// refuses.
+    site_path: str | None = None
+    css: str | None = None      # injected before capture, e.g. to hide page chrome
+    scale: float = 1.0          # device pixel ratio; `max_width` then downsamples, so text is sharp
+    settle: float = 1.0         # seconds after `ready` before the shot, for the last frames
+    # Repo-relative file that receives the PNG's short SHA-256, for a cache-busting `?v=`.
+    version_file: str | None = None
 
 
 SHOTS = [
@@ -105,6 +128,14 @@ SHOTS = [
     # map and province panels instead.
     Shot("results/pakistan_pv_growth_atlas.html", "pakistan_pv_growth",
          width=1500, height=2100, crop=(0, 0, 1500, 1515)),
+    # The social card (og:image / twitter:image of every page): the landing globe at the
+    # card's own size, drawn at 2x and downsampled. The page lays out whole at 1200x630;
+    # the buttons and the legend are hidden, since nothing on a card can be clicked. Reduced
+    # motion (dark_profile) draws the brush complete and keeps the globe at its opening view.
+    Shot("docs/index.md", "social-preview", width=1200, height=630, max_width=1200, scale=2,
+         site_path="", css=".actions, .legend { display: none !important; }",
+         ready="document.documentElement.dataset.earthReady === '1'", settle=3.0,
+         version_file="docs/overrides/partials/social-image-version.html"),
 ]
 
 
@@ -219,6 +250,34 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+@functools.cache
+def built_site() -> Path | None:
+    """Build the MkDocs site once per run into the stage, with the docs env's mkdocs."""
+    site = STAGE / "site"
+    shutil.rmtree(site, ignore_errors=True)
+    local = ROOT / ".pixi" / "envs" / "docs" / "bin" / "mkdocs"
+    cmd = [str(local)] if local.exists() else ["pixi", "run", "-e", "docs", "mkdocs"]
+    res = subprocess.run(cmd + ["build", "-q", "-f", str(ROOT / "mkdocs.yml"), "-d", str(site)],
+                         cwd=ROOT, capture_output=True, text=True)
+    if res.returncode != 0 or not (site / "index.html").exists():
+        print(f"  mkdocs build failed:\n{(res.stderr or res.stdout)[-1500:]}")
+        return None
+    return site
+
+
+class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args) -> None:
+        pass
+
+
+def serve(directory: Path) -> http.server.ThreadingHTTPServer:
+    """Serve `directory` on a free localhost port from a daemon thread."""
+    handler = functools.partial(_QuietHandler, directory=str(directory))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
 def capture(firefox: str, shot: Shot, profile: Path) -> bool:
     src = ROOT / shot.src
     if not src.exists():
@@ -228,8 +287,17 @@ def capture(firefox: str, shot: Shot, profile: Path) -> bool:
     STAGE.mkdir(parents=True, exist_ok=True)
     staged_html = STAGE / f"{shot.name}.html"
     staged_png = STAGE / f"{shot.name}.png"
-    staged_html.write_bytes(src.read_bytes())
     staged_png.unlink(missing_ok=True)
+    server = None
+    if shot.site_path is not None:
+        site = built_site()
+        if site is None:
+            return False
+        server = serve(site)
+        url = f"http://127.0.0.1:{server.server_address[1]}/{shot.site_path}"
+    else:
+        staged_html.write_bytes(src.read_bytes())
+        url = f"file://{staged_html}"
 
     port = _free_port()
     # cwd must also be readable by the snap, or firefox never starts.
@@ -253,9 +321,15 @@ def capture(firefox: str, shot: Shot, profile: Path) -> bool:
         bidi.call("session.new", capabilities={})
         ctx = bidi.call("browsingContext.getTree")["contexts"][0]["context"]
         bidi.call("browsingContext.setViewport", context=ctx,
-                  viewport={"width": shot.width, "height": shot.height})
-        bidi.call("browsingContext.navigate", context=ctx, url=f"file://{staged_html}",
-                  wait="complete")
+                  viewport={"width": shot.width, "height": shot.height},
+                  devicePixelRatio=shot.scale)
+        bidi.call("browsingContext.navigate", context=ctx, url=url, wait="complete")
+        if shot.css:
+            bidi.call("script.evaluate", target={"context": ctx}, awaitPromise=False,
+                      expression="(() => { const s = document.createElement('style'); "
+                                 f"s.textContent = {json.dumps(shot.css)}; "
+                                 "document.head.appendChild(s); "
+                                 "window.dispatchEvent(new Event('resize')); })()")
         deadline = time.time() + 90
         while shot.ready and time.time() < deadline:
             res = bidi.call("script.evaluate", expression=f"!!({shot.ready})",
@@ -266,7 +340,7 @@ def capture(firefox: str, shot: Shot, profile: Path) -> bool:
         else:
             if shot.ready:
                 print(f"  {shot.name}: page never reported ready, capturing anyway")
-        time.sleep(1.0)                             # let the last frame composite
+        time.sleep(shot.settle)                     # let the last frame composite
         shot_b64 = bidi.call("browsingContext.captureScreenshot", context=ctx,
                              origin="document")["data"]
         staged_png.write_bytes(base64.b64decode(shot_b64))
@@ -279,6 +353,8 @@ def capture(firefox: str, shot: Shot, profile: Path) -> bool:
             proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             proc.kill()
+        if server is not None:
+            server.shutdown()
 
     from PIL import Image
 
@@ -291,6 +367,10 @@ def capture(firefox: str, shot: Shot, profile: Path) -> bool:
     dst = OUT / f"{shot.name}.png"
     im.save(dst, optimize=True)
     print(f"  wrote {dst.relative_to(ROOT)} ({im.width}x{im.height})")
+    if shot.version_file:
+        version = hashlib.sha256(dst.read_bytes()).hexdigest()[:10]
+        (ROOT / shot.version_file).write_text(version)
+        print(f"  wrote {shot.version_file} ({version})")
     staged_html.unlink(missing_ok=True)
     staged_png.unlink(missing_ok=True)
     return True

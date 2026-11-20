@@ -761,6 +761,8 @@
     var share = earth.best_mwp / 1000 / earth.world.gw;
     var verifiedShare = earth.verified_mwp / 1000 / earth.world.gw;
     var TOP = -Math.PI / 2;
+    /* Where the share readout sits: just past the end of the stroke (placeLabels). */
+    var READOUT_A = TOP + share * TAU + 0.05;
 
     function brushDisc(c, rIn, widthAt, color) {
       /* A thin ring of varying width, as one filled shape. */
@@ -975,6 +977,9 @@
       /* A scale in GW round the ring. */
       c.font = (11 * Math.max(0.85, Math.min(1.15, S))) + 'px ' + SERIF;
       c.textAlign = 'center'; c.textBaseline = 'middle';
+      /* A label the share readout would cover keeps its tick and loses its text; the unit
+         then goes on the first label drawn. */
+      var wide = !(window.innerWidth <= NARROW_W || window.innerHeight <= 620), unit = ' GW';
       for (var gw = 500; gw < earth.world.gw; gw += 500) {
         var ta = TOP + gw / earth.world.gw * TAU;
         var ca = Math.cos(ta), sa = Math.sin(ta);
@@ -984,8 +989,10 @@
         c.strokeStyle = rgba(T.tick);
         c.lineWidth = 0.9 * S;
         c.stroke();
+        if (wide && Math.abs(ta - READOUT_A) < 0.26) continue;
         c.fillStyle = rgba(T.label);
-        c.fillText(gw.toLocaleString('en-US') + (gw === 500 ? ' GW' : ''), cx + ca * (ringR + 21 * S), cy + sa * (ringR + 21 * S));
+        c.fillText(gw.toLocaleString('en-US') + unit, cx + ca * (ringR + 21 * S), cy + sa * (ringR + 21 * S));
+        unit = '';
       }
     }
 
@@ -1248,9 +1255,8 @@
       best.appendChild(document.createElement('br'));
       best.appendChild(document.createTextNode('in ' + earth.atlases.length + ' countries'));
       if (!narrow) {
-        var a = TOP + share * TAU + 0.05;
-        readout.style.left = (cx + Math.cos(a) * (ringR + 34 * S)) + 'px';
-        readoutY = cy + Math.sin(a) * (ringR + 34 * S);
+        readout.style.left = (cx + Math.cos(READOUT_A) * (ringR + 34 * S)) + 'px';
+        readoutY = cy + Math.sin(READOUT_A) * (ringR + 34 * S);
         var b = TOP - 0.05;
         worldLabel.style.left = (cx + Math.cos(b) * (ringR + 18 * S)) + 'px';
         worldLabel.style.top = (cy + Math.sin(b) * (ringR + 18 * S) - 10) + 'px';

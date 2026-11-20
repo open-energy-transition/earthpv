@@ -14,18 +14,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Electrify Earth | EarthPV</title>
   {% set headline = "Free and open mapping of solar power around the Earth, one country at a time." %}
-  {% set social_image = config.site_url ~ "assets/figures/social-preview.png" %}
+  {#- The landing globe as a 1200x630 card (scripts/screenshot_pages.py, shot
+      `social-preview`), versioned by its hash so social sites refetch a new one. -#}
+  {% set social_version %}{% include "partials/social-image-version.html" ignore missing %}{% endset %}
+  {% set social_image = config.site_url ~ "assets/figures/social-preview.png"
+       ~ ("?v=" ~ social_version | trim if social_version | trim else "") %}
   <meta name="description" content="{{ headline }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="EarthPV">
   <meta property="og:title" content="Electrify Earth">
   <meta property="og:description" content="{{ headline }}">
   <meta property="og:image" content="{{ social_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A night-side globe with the countries EarthPV has mapped glowing by the solar power found in them, under the title Electrify Earth.">
   <meta property="og:url" content="{{ config.site_url }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Electrify Earth">
   <meta name="twitter:description" content="{{ headline }}">
   <meta name="twitter:image" content="{{ social_image }}">
+  <meta name="twitter:image:alt" content="A night-side globe with the countries EarthPV has mapped glowing by the solar power found in them, under the title Electrify Earth.">
   {# The written introduction used to live here: an old link to one of its sections follows it. #}
   <script>if (location.hash.length > 1) location.replace("{{ 'overview/' | url }}" + location.hash);</script>
   {#- Light or dark, decided before the page paints: the reader's choice from any page of the
