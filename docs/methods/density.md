@@ -103,8 +103,11 @@ reflects it after a `--force` rebuild; `meta.json` records
 
 ## A person's verdict replaces a large outline's price
 
-Two review pages put a person back in the loop for the largest outlines
-([Judge large installations](../contribute/review.md)). Above the cap, an outline enters
+Two reviews put a person back in the loop for the largest outlines
+([Check large installations](../contribute/review.md)), and since 2026-11-20 a verdict rests
+on the Sentinel-2 imagery the model saw: the large installations are otherwise reviewed in
+JOSM and the real ones mapped, which then count from the map like any other mapped solar,
+while a lead found not solar there keeps its bin's P(real). Above the cap, an outline enters
 capacity only once a person judges it solar, whole and at the land constant. From
 10,000 m<sup>2</sup> up to the cap, an unmapped lead is already counted at its size bin's
 P(real); a verdict replaces that probability for its own lead, 0 for not solar and for

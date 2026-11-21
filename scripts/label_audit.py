@@ -430,6 +430,11 @@ def cmd_review(a) -> None:
     source for a quick read, and the shared review page for verdicts. Random, not the most
     confident, so the share that is PV estimates the source's unlabelled-blob precision. Esri
     may predate the composite, so "no panel on Esri" is not proof of a false positive."""
+    raise SystemExit(
+        "label_audit review is retired (2026-11-20): it saved Esri World Imagery crops and took "
+        "verdicts from them, and EarthPV uses no verdict drawn from imagery it may not use "
+        "(Esri's terms forbid storing its imagery and using it to verify a published dataset). "
+        "Judge on Sentinel-2, or map the installations in OpenStreetMap.")
     from PIL import Image, ImageDraw
 
     sys.path.insert(0, str(REPO / "scripts"))

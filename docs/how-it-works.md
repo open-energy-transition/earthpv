@@ -87,12 +87,15 @@ star on the one to start with.
 
 #### 3. Check the leads
 
-The largest outlines are judged first, on two review pages every country's run draws: one
-picture per outline from the imagery the model saw, for the solar farms above 10 ha and the
-large installations from 1 ha. A verdict counts in the atlas at the next rebuild, and it
-sorts the lead files: an outline judged solar that OpenStreetMap lacks moves to the
-country's confirmed-lead file, the only one the atlas offers mappers, and one judged not
-solar is dropped ([Judge large installations](contribute/review.md)).
+The largest outlines are checked first, in two reviews every country's run sets up. The
+solar farms above 10 ha are judged on a page of Sentinel-2 pictures, the imagery the model
+saw; a verdict counts in the atlas at the next rebuild, and it sorts the lead files: a park
+judged solar that OpenStreetMap lacks moves to the country's confirmed-lead file, the only
+one the atlas offers mappers, and one judged not solar is dropped. The large installations
+from 1 ha are reviewed in JOSM, where the real ones are mapped into OpenStreetMap and counted
+from the map. A verdict EarthPV uses rests on free Sentinel-2 imagery or is an installation
+mapped in OpenStreetMap, never on commercial imagery whose terms allow only tracing into
+OpenStreetMap ([Check large installations](contribute/review.md)).
 
 Mappers then open the confirmed leads in the OpenStreetMap editor, find each on the
 high-resolution layers and map the installation properly. Local mappers add what no imagery

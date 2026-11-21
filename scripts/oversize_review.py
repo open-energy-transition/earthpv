@@ -30,18 +30,43 @@ largest outlines and a sample of the rest with probability proportional to area,
 replacement. Neither prices anything since 2026-11-01. India's 90 of 2026-10-28/29 are kept as
 the record of how the review began, and `apply` needs every census and sample row judged.
 
-**The review is done on disk, from the imagery the model saw** (`package`, run by `draw`,
-2026-10-29). Each outline gets one image of four panels in
-`data/oversize_review/<aoi>/crops/`: the Sentinel-2 composite of the imagery window in true
-colour around the whole outline, the same at native 10 m pixels over 1.3 km, a false colour
-(SWIR, NIR, red), and Esri World Imagery with its capture date. `index.html` beside them is
-`build_review_page.py`'s page: one outline at a time, PV / not PV / unsure, a note, links to
-Google, Bing, Esri Wayback and JOSM for an outline the panels cannot settle. The composite
-is the right epoch: 11 of the 50 parks of India's sample were built after their Esri capture.
-Its limit is 10 m: 9 of India's 60 sampled outlines needed the Esri panel to decide. The page
-shows no model score, and nothing from an earlier verdict, so a second reviewer judges blind;
-`apply` reports agreement. `review.geojson` holds the same outlines for JOSM. The review is a
-human reading of imagery: record who reviewed it in `--reviewer`.
+**The page shows Sentinel-2 only, and a verdict counts only from such a page (owner,
+2026-11-20).** The project uses no verdict drawn from imagery it is not licensed to use for
+that: Esri's terms forbid using its imagery to verify a published compilation (Master
+Agreement 3.3(b)) and allow it only for tracing into open data such as OpenStreetMap, and
+Mapbox's likewise. So the page (`package`, run by `draw`) is the Sentinel-2 composite of the
+imagery window the model saw, free Copernicus data, three panels saved in
+`data/oversize_review/<aoi>/crops/`: `<code>_s2.jpg` true colour around the whole outline,
+`<code>_pixels.jpg` the same at native 10 m pixels, `<code>_false.jpg` a false colour of SWIR,
+NIR and red. Its links open only free data: Sentinel-2 at any date in the Copernicus Browser,
+the OpenStreetMap map, and JOSM to map the installation, where the editor's imagery is licensed
+for exactly that. The export's `imagery_date` says `Sentinel-2 only` (`S2_ONLY`), `apply`
+records it in review.csv's `imagery` column and refuses an export from any earlier page, which
+showed Esri World Imagery beside Sentinel-2 (saved before 2026-11-19, live after). Verdicts
+applied before 2026-11-20 have no `imagery` and stand as given. The composite is also the right
+epoch: 11 of the 50 parks of India's sample were built after their Esri capture. Its limit is
+10 m: an outline Sentinel-2 cannot settle is left unsure, and mapping it is how it then counts.
+The page shows no model score, and nothing from an earlier verdict, so a second reviewer judges
+blind; `apply` reports agreement. The review is a human reading of imagery: record who reviewed
+it in `--reviewer`.
+
+**JOSM: review while mapping into OpenStreetMap (owner, 2026-11-20).** `package` also writes
+`<packages>/<aoi>/<aoi><suffix>.osm`, the open outlines as a JOSM layer that refuses upload
+(`write_josm`), largest first, each tagged `earthpv:code`, its size, placement and region, and
+`earthpv:review=todo`; it refuses download as well, so JOSM's continuous download cannot fill
+it. A reviewer opens it beside the OpenStreetMap data (docs/contribute/review.md: the Todo list
+and continuous download, as for the confirmed leads), looks at each outline on the imagery JOSM
+offers for mapping and maps the solar that is there. **The map is the verdict**: a mapped
+outline needs no mark; once the country's OpenStreetMap solar is pulled again it leaves the
+pool (`osm` = `mapped` in review.csv, the same for an outline anyone mapped) and the map counts
+it at its own shape. An outline with no solar is marked `earthpv:review=not_pv` (`unsure`, or
+`mapped` to say so before the pull, are accepted), the layer saved, and `apply --josm <the
+saved layer>` records the marks in review.csv's `josm` column (`read_josm`; the layer names its
+draw, `earthpv:draw`, and `apply` refuses another's). A `not_pv` mark is a judgement on imagery
+licensed only for mapping into OpenStreetMap, so it takes the outline off the review and
+prices nothing: a large lead keeps its size class's measured share, a blob still counts
+nothing, and no lead file, study or training set reads it. This is the large installation
+review's default (`--kind large` writes no page unless `--page`); the blob review writes both.
 
 **Verdicts become mapping leads (2026-11-19).** scripts/release_leads.py reads the review
 blocks `apply` writes: an outline judged solar that OpenStreetMap still lacks goes to the
@@ -59,16 +84,22 @@ attach themselves to the new outlines.
 same review for the leads BELOW the cap, from `LARGE_MIN_M2` (10,000 m2, `--min-area-m2`) up to
 it: model-drawn new leads through the same regions and screens, rooftop and ground alike,
 largest first, in `results/<aoi>_large_review/` and `data/large_review/` (on /home). These
-leads are already in capacity, each at its size bin's P(real); a verdict replaces that price
-for its own lead (`pv` 1 on the ground and 1/2.5 on a roof, where the model's outline is
-about 2.5 times the array, owner 2026-11-10; `not_pv` 0) and keeps the bin's recall
-(`capacity_calibration.LEAD_REVIEW_KEY`, `density._lead_verdicts`). Any named reviewer's
-verdict counts (owner, 2026-11-10). The crops are cut tighter (1 km of composite, 400 m of
-native pixels, about 250 m of Esri), because a 1 ha roof is a speck in a park's window.
+leads are already in capacity, each at its size bin's P(real). **It is done in JOSM, mapping
+the real installations into OpenStreetMap (owner, 2026-11-20)**: `draw` writes the JOSM layer
+and no page. A lead mapped counts from the map once the country's solar is pulled again (its
+model outline is then de-duplicated against the mapped one). `--page` adds the Sentinel-2 page
+for leads 10 m pixels can settle, mostly on open ground: its verdicts replace the lead's price
+(`pv` 1 on the ground and 1/2.5 on a roof, where the model's outline is about 2.5 times the
+array, owner 2026-11-10; `not_pv` 0) and keep the bin's recall
+(`capacity_calibration.LEAD_REVIEW_KEY`, `density._lead_verdicts`). Any named reviewer counts
+(owner, 2026-11-10). Its crops are cut tighter (1 km of composite, 400 m of native pixels),
+because a 1 ha roof is a speck in a park's window.
 
     pixi run large-review draw --aoi india
-    # open data/large_review/index.html, judge, export, then:
-    pixi run large-review apply --aoi india --reviewer "<name>" --verdicts <the export>
+    # open data/large_review/india/india_large_review.osm in JOSM, map, set earthpv:review, save
+    pixi run large-review apply --aoi india --reviewer "<name>" --josm <the saved layer>
+    # pull the country's OpenStreetMap solar again, then (with the new pull as --labels):
+    pixi run large-review apply --aoi india --reviewer "<name>" --labels <the new pull>
     pixi run earthpv density --aoi india --districts    # no --force; then the atlas
 
 **Bright roofs are kept apart (owner, 2026-11-10).** Both pages carry a fourth verdict, key 4
@@ -98,6 +129,17 @@ VERDICTS = ("pv", "not_pv")
 PAGE_VERDICTS = {"pv": ("pv", ""), "no_pv": ("not_pv", ""), "unsure": ("unsure", ""),
                  "bright_roof": ("not_pv", "bright_roof"), "": ("", "")}
 LARGE_MIN_M2 = 10_000.0
+# What a page built since 2026-11-20 writes in its export's `imagery_date`, and review.csv's
+# `imagery` for the verdicts it gave: the page showed the Sentinel-2 composite and nothing else.
+# `apply` takes no verdict without it (owner, 2026-11-20: no verdict from imagery the project
+# may not use).
+S2_ONLY = "Sentinel-2 only"
+# A JOSM layer's `earthpv:review` values (`read_josm`): `todo` is open, as `unsure` is. A lead
+# mapped needs no mark (the next OpenStreetMap pull finds it); `mapped` only says so early.
+JOSM_OUTCOMES = ("mapped", "not_pv", "unsure")
+JOSM_DONE = ("mapped", "not_pv")
+DO_NOT_UPLOAD = "earthpv review layer - do not upload to OpenStreetMap"
+HASHTAGS = ["#tracethesun", "#earthpv"]
 
 
 @dataclass(frozen=True)
@@ -112,17 +154,19 @@ class Kind:
     table_key: str         # the calibration table block `apply` writes
     context_min_m: float   # the composite panels show at least this much ground
     detail_m: float        # the native-pixel panel's width
-    esri_min_m: float | None  # the Esri panel's width (None: as the composite's)
     noun: str              # what one row is, in messages
+    page: bool             # `package` writes the Sentinel-2 page by default (else JOSM only)
+    hashtag: str           # the JOSM changeset's own hashtag, beside HASHTAGS
 
 
 KINDS = {
     "blob": Kind("blob", "Solar farm review", "_oversize_review", REPO / "data" / "oversize_review",
-                 "{aoi}_blob_verdicts.csv", "blob-review", "oversize_review", 1500.0, 1280.0, None,
-                 "outlines above the cap"),
+                 "{aoi}_blob_verdicts.csv", "blob-review", "oversize_review", 1500.0, 1280.0,
+                 "outlines above the cap", True, "#earthpv-solar-farm-review"),
     "large": Kind("large", "Large installation review", "_large_review",
                   REPO / "data" / "large_review", "{aoi}_large_verdicts.csv", "large-review",
-                  "lead_review", 1000.0, 400.0, 250.0, "leads below the cap"),
+                  "lead_review", 1000.0, 400.0, "leads below the cap", False,
+                  "#earthpv-large-review"),
 }
 K = KINDS["blob"]  # set by `main`; the module's functions read the kind from here
 PACKAGES = K.packages  # kept for callers that import it (the blob review's own directory)
@@ -242,6 +286,13 @@ def cmd_draw(a) -> int:
           f"the atlas's regions and the lead screens ({queue.area_m2.sum() / 1e6:.1f} km2)")
     if path.exists() and not a.redraw:
         _queue_rest(path, queue)
+        rev = pd.read_csv(path)
+        gone, same = _gone(rev, pool, a.aoi)
+        if same:
+            _mark_mapped(rev, gone).to_csv(path, index=False)
+        else:
+            print(f"{len(gone)} reviewed outlines are not in the candidates as drawn: "
+                  "candidates.parquet changed since the draw, so start again with `--redraw`")
         return cmd_package(a)
     if queue.empty:
         print(f"nothing to review in {a.aoi}")
@@ -292,6 +343,39 @@ def _queue_rest(path: Path, pool) -> None:
           f"{len(rev) + len(q)} in {path}")
 
 
+def _gone(rev, pool, aoi: str):
+    """review.csv's rows no longer in `pool` (mapped in OpenStreetMap since the draw, by the
+    reference `pool` was drawn against), and whether every one of them is still in the
+    candidates at the area drawn (False: candidates.parquet changed since the draw)."""
+    import numpy as np
+    import pandas as pd
+
+    gone = rev[~rev["candidate_index"].isin(pool["candidate_index"])]
+    c = pd.read_parquet(candidates_path(aoi), columns=["area_m2"])
+    same = gone["candidate_index"].isin(c.index)
+    ok = bool(same.all()) and bool(np.allclose(c.loc[gone.loc[same, "candidate_index"], "area_m2"],
+                                               gone.loc[same, "area_m2"], rtol=1e-6, atol=1.0))
+    return gone, ok
+
+
+def _mark_mapped(rev, gone):
+    """review.csv's `osm` column: `mapped` for an outline now mapped in OpenStreetMap (it left
+    the pool), whoever mapped it; the map counts it and any verdict on it rests."""
+    import numpy as np
+
+    rev["osm"] = np.where(rev["candidate_index"].isin(gone["candidate_index"]), "mapped", "")
+    return rev
+
+
+def _text(rev, col: str):
+    """A column of review.csv as text, blank where absent (a column of blanks reads as floats)."""
+    import pandas as pd
+
+    if col not in rev.columns:
+        return pd.Series("", index=rev.index, dtype=object)
+    return rev[col].astype(object).where(rev[col].notna(), "").astype(str)
+
+
 def cmd_apply(a) -> int:
     import geopandas as gpd
     import numpy as np
@@ -303,6 +387,8 @@ def cmd_apply(a) -> int:
     rev = pd.read_csv(a.review)
     if a.verdicts is not None:
         rev = _merge_page_verdicts(rev, a.verdicts, a.unsure_as, a.reviewer)
+    if a.josm is not None:
+        rev = _merge_josm(rev, a.josm, a.reviewer)
     queue = rev["stratum"] == "queue"
     bad = sorted(set(rev["verdict"].fillna("")) - set(VERDICTS) - {""})
     blank = rev["verdict"].fillna("").eq("") & ~queue
@@ -315,16 +401,14 @@ def cmd_apply(a) -> int:
         # The band the review was drawn over, even if a later draw asked for a lower floor.
         a.min_area_m2 = float(min(a.min_area_m2, rev["area_m2"].min()))
     pool = population(a.aoi, a.labels, a.min_distance_m, a.min_area_m2)
-    gone = rev[~rev["candidate_index"].isin(pool["candidate_index"])]
-    c = pd.read_parquet(candidates_path(a.aoi), columns=["area_m2"])
-    same = gone["candidate_index"].isin(c.index)
-    if not same.all() or not np.allclose(c.loc[gone.loc[same, "candidate_index"], "area_m2"],
-                                         gone.loc[same, "area_m2"], rtol=1e-6, atol=1.0):
+    gone, same = _gone(rev, pool, a.aoi)
+    if not same:
         raise SystemExit(f"{len(gone)} reviewed outlines are not in the current population and "
                          "not in the candidates as drawn: candidates.parquet changed since the "
                          "draw, so start a new review with `draw --redraw`")
-    if a.verdicts is not None:  # only once nothing above can refuse the sitting
-        rev.to_csv(a.review, index=False)
+    # Only once nothing above can refuse the sitting; `osm` is refreshed from --labels every time.
+    _mark_mapped(rev, gone).to_csv(a.review, index=False)
+    _report_josm(rev, a.labels)
     prior = (cc.load_table(cc.default_table_path(a.aoi)) or {}).get(K.table_key) or {}
     if K.name == "large":
         return _apply_large(a, rev, gone, prior)
@@ -458,18 +542,48 @@ def _apply_large(a, rev, gone, prior: dict) -> int:
     return 0
 
 
+def _report_josm(rev, labels: Path) -> None:
+    """What the JOSM review has recorded, against the OpenStreetMap pull `apply` read."""
+    j, osm = _text(rev, "josm"), _text(rev, "osm").eq("mapped")
+    if not (j.ne("") | osm).any():
+        return
+    said = j.eq("mapped")
+    print(f"OpenStreetMap ({labels}): {int(osm.sum())} outlines mapped since the draw, which "
+          "the map counts at their own shape")
+    if (said & ~osm).any():
+        print(f"{int((said & ~osm).sum())} marked mapped in JOSM are not in that pull yet: pull "
+              "the country's solar again and apply with it as --labels")
+    no = j.eq("not_pv") & ~osm
+    if no.any():
+        print(f"{int(no.sum())} found not solar in JOSM: off the review, priced as before (a "
+              "judgement on the editor's imagery prices nothing)")
+    if j.eq("unsure").any():
+        print(f"{int(j.eq('unsure').sum())} left unsure in JOSM: back in the next layer")
+
+
+def _open_rows(rev):
+    """The outlines still to review: no verdict, not settled in JOSM, not mapped since."""
+    return (rev["verdict"].fillna("").isin(("", "unsure")) & ~_text(rev, "josm").isin(JOSM_DONE)
+            & ~_text(rev, "osm").eq("mapped"))
+
+
 def _share_row(aoi: str, path: Path) -> dict:
     import pandas as pd
 
     rev = pd.read_csv(path)
     v = rev["verdict"].fillna("")
-    left = v.eq("")
+    j, osm = _text(rev, "josm"), _text(rev, "osm").eq("mapped")
+    left = _open_rows(rev)
     flag = rev["flag"].fillna("") if "flag" in rev.columns else pd.Series("", index=rev.index)
-    return {"aoi": aoi, "n": len(rev), "judged": int((~left).sum()), "pv": int(v.eq("pv").sum()),
-            "not_pv": int(v.eq("not_pv").sum()), "left": int(left.sum()),
+    pkg = K.packages / aoi
+    return {"aoi": aoi, "n": len(rev), "judged": int((~left).sum()),
+            "pv": int(v.eq("pv").sum()), "not_pv": int(v.eq("not_pv").sum()),
+            "mapped": int(osm.sum()), "josm_not": int((j.eq("not_pv") & ~osm).sum()),
+            "left": int(left.sum()),
             "bright": int(flag.eq("bright_roof").sum()),
             "left_km2": float(rev.loc[left, "area_m2"].sum() / 1e6),
-            "page": (K.packages / aoi / "index.html").exists()}
+            "page": (pkg / "index.html").exists(),
+            "josm": (pkg / f"{aoi}{K.suffix}.osm").exists()}
 
 
 def share_table() -> list[dict]:
@@ -480,19 +594,22 @@ def share_table() -> list[dict]:
 
 def cmd_status(a) -> int:
     rows = share_table()
-    print(f"{'country':14s} {'outlines':>8s} {'judged':>7s} {'solar':>6s} {'not':>5s} "
-          f"{'bright':>6s} {'left':>6s} {'left km2':>9s}  share judged")
+    print(f"{'country':14s} {'outlines':>8s} {'checked':>7s} {'mapped':>6s} {'solar':>6s} "
+          f"{'not':>5s} {'josm no':>7s} {'bright':>6s} {'left':>6s} {'left km2':>9s}  share")
     for r in rows:
-        print(f"{r['aoi']:14s} {r['n']:8d} {r['judged']:7d} {r['pv']:6d} {r['not_pv']:5d} "
-              f"{r['bright']:6d} {r['left']:6d} {r['left_km2']:9.1f}  "
-              f"{r['judged'] / max(r['n'], 1):.0%}")
-    print("bright: not PV on a very bright roof (key 4 on the page), counted inside 'not'")
+        print(f"{r['aoi']:14s} {r['n']:8d} {r['judged']:7d} {r['mapped']:6d} {r['pv']:6d} "
+              f"{r['not_pv']:5d} {r['josm_not']:7d} {r['bright']:6d} {r['left']:6d} "
+              f"{r['left_km2']:9.1f}  {r['judged'] / max(r['n'], 1):.0%}")
+    print("mapped: in OpenStreetMap since the draw, by the pull `apply` last read; solar / not: "
+          "verdicts on a review page; josm no: found not solar in JOSM (prices nothing); "
+          "bright: not PV on a very bright roof (key 4 on the page), inside 'not'")
     print(f"-> {write_hub()}")
     return 0
 
 
 # --------------------------------------------------------------------------------------
-# The review package: four panels per outline on disk, and the page to judge them in
+# The review package: a JOSM layer of the open outlines, and a page of three Sentinel-2
+# panels per outline on disk, the only imagery a verdict may come from
 # --------------------------------------------------------------------------------------
 PANEL = 480
 CONTEXT_MIN_M = 1500.0  # the context panels show at least this much ground
@@ -504,26 +621,29 @@ TRUE_RGB = (("B04", 0.30), ("B03", 0.28), ("B02", 0.26))
 FALSE_RGB = (("B12", 0.45), ("B08", 0.50), ("B04", 0.30))
 YELLOW = (255, 214, 0)
 
-GUIDE = r"""      <ul>
+GUIDE = r"""      <p><b>Judge on these three Sentinel-2 panels alone.</b> They are free Copernicus data,
+        the imagery the model read. A verdict taken from Google, Bing, Esri or Mapbox imagery
+        cannot be used: their terms do not allow it.</p>
+      <ul>
         <li><b>PV</b>: a solar park inside the yellow outline. On the composite, blocks of
           even dark blue-grey with straight edges, a grid of access roads and small bright
-          inverter pads; dark purple in the false colour; rows of panels on Esri. The outline
-          is the model's and may be ragged or leave gaps: judge whether a park is there, not
-          how well it is traced.</li>
+          inverter pads; dark purple in the false colour, where vegetation is bright green.
+          The outline is the model's and may be ragged or leave gaps: judge whether a park is
+          there, not how well it is traced.</li>
         <li><b>Not PV</b>: something else, typically dark ploughed fields, water or aquaculture
           ponds, burn scars, rock, a shaded slope, snow, a riverbed or greenhouses. Fields are
           dark only in true colour; water is dark in every panel.</li>
-        <li><b>Unsure</b>: these four panels cannot settle it. Open the links and decide, or
-          leave it unsure: it does not count, and it comes back next time.</li>
+        <li><b>Unsure</b>: 10 m pixels cannot settle it. Leave it unsure: it does not count and
+          comes back next time. If you map in OpenStreetMap, <i>Map it in JOSM</i> opens the
+          spot there: an installation you map counts from the map.</li>
         <li><b>Bright roof</b>: not PV, and the outline sits on very bright roofs (white or
           light metal, a reflective coating). It counts as Not PV; the label keeps these
           false alarms apart so they can be studied.</li>
       </ul>
-      <p>The composite is the imagery the model read, so it shows parks built after the Esri
-        capture: panels on the composite and bare or freshly cleared ground on an older Esri
-        image is a park built since. A flat grey block is a cell nobody imaged; a black block,
-        dark red in the false colour, is a cell that lost bands. Neither is ground: judge
-        those parts on Esri. Keys: <kbd>1</kbd> PV, <kbd>2</kbd> Not PV,
+      <p>A flat grey block is a cell nobody imaged; a black block, dark red in the false colour,
+        is a cell that lost bands. Neither is ground: if the rest cannot settle it, leave it
+        unsure. The Copernicus Browser link shows Sentinel-2 on other dates, free as well, to
+        see a park being built. Keys: <kbd>1</kbd> PV, <kbd>2</kbd> Not PV,
         <kbd>3</kbd> unsure, <kbd>4</kbd> bright roof, <kbd>&larr;</kbd> <kbd>&rarr;</kbd>
         step, <kbd>n</kbd> note.</p>
       <p>Stop whenever you like: progress stays in this browser, and any export can be
@@ -532,29 +652,29 @@ GUIDE = r"""      <ul>
         <code>pixi run blob-review apply --aoi __AOI__ --reviewer "&lt;name&gt;"
         --verdicts &lt;the export&gt;</code>.</p>"""
 
-GUIDE_LARGE = r"""      <ul>
-        <li><b>PV</b>: solar panels inside or touching the yellow outline, on a roof or on the
-          ground. On Esri, rows of dark blue-grey rectangles in a regular grid, often with a
-          thin gap between rows; on a roof they follow its edges and leave a margin. On the
-          composite, an even dark patch with straight edges, dark purple in the false colour.
-          The outline is the model's and is often larger than the array: judge whether PV is
-          there, not how much of the outline it fills.</li>
-        <li><b>Not PV</b>: something else, typically a dark or blue metal roof, a tar or wet
-          roof, greenhouses or shade netting, solar water heaters (small, scattered, with a
-          tank), a car park, water, a dark field, rock or a shadow, and the imagery is recent
-          enough to show panels if they were there.</li>
-        <li><b>Unsure</b>: these four panels cannot settle it. Open the links and decide, or
-          leave it unsure: it keeps the price it had, and it comes back next time.</li>
+GUIDE_LARGE = r"""      <p><b>Judge on these three Sentinel-2 panels alone.</b> They are free Copernicus data,
+        the imagery the model read. A verdict taken from Google, Bing, Esri or Mapbox imagery
+        cannot be used: their terms do not allow it. This page is for the leads 10 m pixels
+        can settle, mostly on open ground; the rest are reviewed in JOSM, where the editor's
+        imagery may be used to map them into OpenStreetMap.</p>
+      <ul>
+        <li><b>PV</b>: solar panels inside or touching the yellow outline. On the composite, an
+          even dark patch with straight edges, dark purple in the false colour, where
+          vegetation is bright green. The outline is the model's and is often larger than the
+          array: judge whether PV is there, not how much of the outline it fills.</li>
+        <li><b>Not PV</b>: something else, plain at 10 m, typically water, a dark field, rock,
+          a shadow or a burn scar.</li>
+        <li><b>Unsure</b>: 10 m pixels cannot settle it, as on most roofs (a dark or blue metal
+          roof, a tar or wet roof and a roof full of panels look alike). Leave it unsure: it
+          keeps the price it had, and the JOSM review takes it up.</li>
         <li><b>Bright roof</b>: not PV, and the outline sits on a very bright roof (white or
-          light metal, a reflective coating), bright on the composite as well as on Esri. It
-          counts as Not PV; the label keeps these false alarms apart so they can be
-          studied. A bright roof that does carry panels is PV.</li>
+          light metal, a reflective coating). It counts as Not PV; the label keeps these false
+          alarms apart so they can be studied.</li>
       </ul>
       <p>These leads already count, each at the share its size class is usually right. Your
         verdict replaces that share for this lead alone: solar counts it as real (a roof
         outline at 1/2.5 of its area, since the model draws about 2.5 times the array there),
-        not solar counts it as nothing. The composite is the imagery the model read, so it shows arrays
-        built after the Esri capture. A flat grey block is a cell nobody imaged. Keys:
+        not solar counts it as nothing. A flat grey block is a cell nobody imaged. Keys:
         <kbd>1</kbd> PV, <kbd>2</kbd> Not PV, <kbd>3</kbd> unsure, <kbd>4</kbd> bright roof,
         <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note.</p>
       <p>Stop whenever you like: progress stays in this browser, and any export can be
@@ -563,14 +683,128 @@ GUIDE_LARGE = r"""      <ul>
         --verdicts &lt;the export&gt;</code>.</p>"""
 
 
-def _render_job(job: tuple) -> tuple[str, bool, str | None]:
-    code, args = job
+# The three Sentinel-2 panels of an outline on disk: crops/<code>_<name>.jpg, in page order.
+S2_FILES = ("s2", "pixels", "false")
+
+
+def _s2_files(pkg: Path, code: str) -> list[Path]:
+    return [pkg / "crops" / f"{code}_{name}.jpg" for name in S2_FILES]
+
+
+def _s2_job(job: tuple) -> tuple[str, bool]:
+    """Render and save one outline's three Sentinel-2 panels (no network)."""
+    code, (geom, comp_dir, origin, epoch, outs, context_min_m, detail_m) = job
     try:
-        ok, esri_date = _render(*args)
+        panels, *_ = _s2_panels(geom, comp_dir, origin, epoch, context_min_m, detail_m)
+        for im, out in zip(panels, outs):
+            tmp = out.with_suffix(".tmp.jpg")
+            im.save(tmp, "JPEG", quality=86)
+            tmp.replace(out)
     except Exception as e:  # noqa: BLE001 -- one bad outline must not stop the country
         print(f"  {code}: not rendered: {e}", flush=True)
-        return code, False, None
-    return code, ok, esri_date
+        return code, False
+    return code, True
+
+
+def write_josm(rev, geoms, path: Path, draw_id: str) -> int:
+    """The outlines of `rev` as a JOSM layer that refuses upload (`upload="never"` on the root
+    element, which JOSM honours and a GeoJSON opened as data is not given), largest first.
+    Each polygon part is a closed way (holes left out: it marks where to look and is never
+    uploaded) carrying the outline's tags; the reviewer sets `earthpv:review`. Returns how many
+    outlines it holds."""
+    from xml.sax.saxutils import quoteattr
+
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<osm version="0.6" generator="earthpv oversize_review" upload="never" '
+           'download="never">']
+    ways, nid, wid, n = [], 0, 0, 0
+    order = rev.assign(outline_=list(geoms)).sort_values("area_m2", ascending=False)
+    for r in order.itertuples():
+        g = r.outline_.simplify(1e-5, preserve_topology=True)
+        place = PLACES.get(str(getattr(r, "placement", "") or ""), "")
+        size = f"{r.area_m2 / 1e4:,.1f} ha" if r.area_m2 >= 1e4 else f"{r.area_m2:,.0f} m²"
+        tags = {"name": f"{r.code} {size}" + (f" {place}" if place else ""),
+                "earthpv:code": r.code, "earthpv:review": "todo",
+                "earthpv:area_m2": f"{r.area_m2:.0f}",
+                **({"earthpv:placement": str(r.placement)} if place else {}),
+                **({"earthpv:region": r.region} if isinstance(r.region, str) else {}),
+                "earthpv:draw": draw_id, "do_not_upload": DO_NOT_UPLOAD}
+        n += 1
+        for part in getattr(g, "geoms", [g]):
+            refs = []
+            for x, y in list(part.exterior.coords)[:-1]:
+                nid += 1
+                out.append(f'  <node id="-{nid}" lat="{y:.7f}" lon="{x:.7f}"/>')
+                refs.append(nid)
+            wid += 1
+            ways.append((wid, refs, tags))
+    for wid, refs, tags in ways:
+        out.append(f'  <way id="-{wid}">')
+        out.extend(f'    <nd ref="-{x}"/>' for x in refs + refs[:1])
+        out.extend(f"    <tag k={quoteattr(k)} v={quoteattr(v)}/>" for k, v in tags.items())
+        out.append("  </way>")
+    out.append("</osm>")
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("\n".join(out) + "\n")
+    tmp.replace(path)
+    return n
+
+
+def read_josm(path: Path, draw_id: str) -> dict[str, str]:
+    """Code -> `earthpv:review` from a layer `write_josm` wrote and a reviewer saved. A way the
+    reviewer deleted is absent, `todo` or blank is no outcome, and the parts of one outline
+    must agree. Refuses a layer of another draw, whose codes name other outlines."""
+    import xml.etree.ElementTree as ET
+
+    got: dict[str, set[str]] = {}
+    draws = set()
+    for el in ET.parse(path).getroot():
+        if el.tag not in ("way", "relation", "node") or el.get("action") == "delete":
+            continue
+        tags = {t.get("k"): (t.get("v") or "").strip() for t in el.findall("tag")}
+        code = tags.get("earthpv:code")
+        if not code:
+            continue
+        draws.add(tags.get("earthpv:draw", ""))
+        v = tags.get("earthpv:review", "").lower().replace(" ", "_").replace("-", "_")
+        got.setdefault(code, set()).add(v)
+    if draws - {draw_id}:
+        raise SystemExit(f"{path} belongs to another draw ({', '.join(sorted(draws - {draw_id}))};"
+                         f" this review is {draw_id}): its codes name other outlines")
+    out = {}
+    for code, vs in got.items():
+        vs -= {"", "todo"}
+        bad = vs - set(JOSM_OUTCOMES)
+        if bad:
+            raise SystemExit(f"{path}: {code} has earthpv:review={sorted(bad)}; use one of "
+                             f"{', '.join(JOSM_OUTCOMES)}, or todo")
+        if len(vs) > 1:
+            raise SystemExit(f"{path}: the parts of {code} disagree: {sorted(vs)}")
+        if vs:
+            out[code] = vs.pop()
+    return out
+
+
+def _merge_josm(rev, path: Path, reviewer: str):
+    """A saved JOSM review layer into review.csv's `josm` and `josm_reviewer` columns. The
+    `verdict` column is not touched: a mapped outline counts from the map once the country's
+    solar is pulled again, and `not_pv` was judged on imagery licensed only for mapping into
+    OpenStreetMap, so it takes the outline off the review and prices nothing."""
+    import pandas as pd
+
+    got = read_josm(path, _draw_id(rev))
+    unknown = sorted(set(got) - set(rev["code"]))
+    if unknown:
+        raise SystemExit(f"{path}: codes this review does not hold: {unknown[:8]}")
+    rev["josm"] = _text(rev, "josm")
+    rev["josm_reviewer"] = _text(rev, "josm_reviewer")
+    fresh = rev["code"].isin(list(got))
+    rev.loc[fresh, "josm"] = rev.loc[fresh, "code"].map(got)
+    rev.loc[fresh, "josm_reviewer"] = f"{reviewer}, {date.today().isoformat()}"
+    n = pd.Series(got, dtype=object).value_counts()
+    print(f"{path}: {len(got)} outlines reviewed in JOSM by {reviewer}: "
+          + ", ".join(f"{int(n.get(k, 0))} {k}" for k in JOSM_OUTCOMES))
+    return rev
 
 
 def _epoch(aoi: str, cfg: dict) -> str:
@@ -589,11 +823,12 @@ def _epoch(aoi: str, cfg: dict) -> str:
 
 
 def cmd_package(a) -> int:
-    """Render every row of review.csv and write the page, the JOSM GeoJSON and the codes."""
+    """Write the JOSM layer of the open outlines, render their Sentinel-2 panels and write the
+    page (where the kind or `--page` asks for one), and review.geojson of every outline."""
     import geopandas as gpd
     import pandas as pd
 
-    from build_review_page import write_page
+    from build_review_page import COPERNICUS, LINKS_FREE, josm_link, write_page
 
     from earthpv.config import Settings
     from earthpv.density import _grid_origin
@@ -609,92 +844,126 @@ def cmd_package(a) -> int:
     cfg = s.aois[a.aoi]
     origin = _grid_origin(a.aoi, cfg, s)
     epoch = _epoch(a.aoi, cfg)
-    pkg = K.packages / a.aoi
+    name = a.aoi
+    pkg = K.packages / name
     (pkg / "crops").mkdir(parents=True, exist_ok=True)
     comp = REPO / f"data/composites/{a.aoi}/composites"
-    show = rev["verdict"].fillna("").eq("") | a.include_judged
-    jobs = []
-    for r, g, on_page in zip(rev.itertuples(), geoms, show):
-        jpg, meta = pkg / "crops" / f"{r.code}.jpg", pkg / "crops" / f"{r.code}.esri"
-        if on_page and (a.force or not jpg.exists() or not meta.exists()):
-            jobs.append((r.code, (g, comp, origin, epoch, jpg, not a.no_esri,
-                                  K.context_min_m, K.detail_m, K.esri_min_m)))
-    no_esri = 0
-    with ProcessPoolExecutor(max_workers=a.workers) as pool:
-        for n, (code, ok, esri_date) in enumerate(pool.map(_render_job, jobs, chunksize=4), 1):
-            # No marker for a failed Esri fetch, so the next `package` tries that one again.
-            if ok:
-                (pkg / "crops" / f"{code}.esri").write_text(esri_date or "")
-            no_esri += not ok
-            if n % 100 == 0 or n == len(jobs):
-                print(f"  {a.aoi}: {n} of {len(jobs)} rendered", flush=True)
-    items, dates, unrendered = [], [], []
-    for r, g, on_page in zip(rev.itertuples(), geoms, show):
-        meta = pkg / "crops" / f"{r.code}.esri"
-        esri_date = meta.read_text().strip() if meta.exists() else ""
-        dates.append(esri_date)
-        if not on_page:
-            continue
-        if not (pkg / "crops" / f"{r.code}.jpg").exists():
-            unrendered.append(r.code)
-            continue
-        w, so, e, n = g.bounds
-        p = g.representative_point()
-        size = (f"{r.area_m2:,.0f} m² · {PLACES.get(getattr(r, 'placement', ''), 'placement unknown')}"
-                if K.name == "large" else f"{r.area_m2 / 1e4:,.0f} ha")
-        items.append({
-            "code": r.code, "img": f"crops/{r.code}.jpg", "date": esri_date,
-            "date_label": f"{size} · {r.region} · Esri {esri_date or 'not fetched'}",
-            "lon": round(p.x, 6), "lat": round(p.y, 6),
-            "bbox": [round(w - 0.002, 6), round(so - 0.002, 6), round(e + 0.002, 6),
-                     round(n + 0.002, 6)],
-        })
-    if not items:
-        (pkg / "index.html").unlink(missing_ok=True)
-        print(f"every outline of {a.aoi} has a verdict; no page")
+    show = (_open_rows(rev) | a.include_judged).to_numpy()
+    # The JOSM layer: every open outline, no imagery.
+    layer = pkg / f"{name}{K.suffix}.osm"
+    if show.any():
+        n = write_josm(rev[show], geoms[show], layer, _draw_id(rev))
+        print(f"JOSM layer, {n} outlines, refuses upload -> {layer}")
     else:
-        guide = GUIDE_LARGE if K.name == "large" else GUIDE
-        page = write_page(pkg / "index.html", f"{a.aoi}{K.suffix}", items,
-                          guide=guide.replace("__AOI__", a.aoi), title=K.title,
-                          store=f"{a.aoi}{K.suffix}:{_draw_id(rev)}",
-                          export_name=K.export.format(aoi=a.aoi), back="../index.html",
-                          bright_roof=True)
-        print(f"{len(items)} of {len(rev)} outlines on the page -> {page}"
-              + (f"; {no_esri} without their Esri panel (`package` retries)" if no_esri else ""))
+        layer.unlink(missing_ok=True)
+    # Pages before 2026-11-20 showed Esri World Imagery; nothing of it is kept. The four-panel
+    # sheets of pages before 2026-11-19 (crops/<code>.jpg, no underscore) held it, saved, which
+    # Esri's terms do not allow; later pages cached its capture dates in esri_meta.json.
+    sheets = [f for f in (pkg / "crops").glob("*.jpg") if "_" not in f.stem]
+    for f in sheets:
+        f.unlink()
+    if sheets:
+        print(f"{len(sheets)} older sheets holding saved Esri imagery deleted")
+    for f in [pkg / "esri_meta.json", *(pkg / "crops").glob("*.esri")]:
+        f.unlink(missing_ok=True)
+    # A page: where asked (`--page`), by the kind's default, or to keep a Sentinel-2 page drawn
+    # earlier current. A page of before 2026-11-20 showed Esri imagery: it goes, since `apply`
+    # takes none of its verdicts.
+    old = pkg / "index.html"
+    s2_page = old.exists() and S2_ONLY in old.read_text(errors="ignore")[:2000]
+    page = a.page if a.page is not None else (K.page or s2_page)
+    unrendered = []
+    if not page:
+        if old.exists():
+            old.unlink()
+            print("the page is removed: " + ("--no-page" if s2_page else
+                  "it showed Esri imagery, and `apply` takes none of its verdicts")
+                  + "; `--page` draws the Sentinel-2 page")
+    else:
+        jobs = []
+        for r, g, on_page in zip(rev.itertuples(), geoms, show):
+            outs = _s2_files(pkg, r.code)
+            if on_page and (a.force or not all(o.exists() for o in outs)):
+                jobs.append((r.code, (g, comp, origin, epoch, outs, K.context_min_m, K.detail_m)))
+        with ProcessPoolExecutor(max_workers=a.workers) as pool:
+            for n, _done in enumerate(pool.map(_s2_job, jobs, chunksize=4), 1):
+                if n % 100 == 0 or n == len(jobs):
+                    print(f"  {a.aoi}: {n} of {len(jobs)} rendered", flush=True)
+        items = []
+        for r, g, on_page in zip(rev.itertuples(), geoms, show):
+            if not on_page:
+                continue
+            if not all(o.exists() for o in _s2_files(pkg, r.code)):
+                unrendered.append(r.code)
+                continue
+            w, so, e, n = g.bounds
+            p = g.representative_point()
+            size = (f"{r.area_m2:,.0f} m² · "
+                    f"{PLACES.get(getattr(r, 'placement', ''), 'placement unknown')}"
+                    if K.name == "large" else f"{r.area_m2 / 1e4:,.0f} ha")
+            items.append({
+                "code": r.code,
+                "panels": [{"src": f"crops/{f.name}", "cap": ""} for f in _s2_files(pkg, r.code)],
+                "date": f"{S2_ONLY}, {epoch}",
+                "date_label": f"{size} · {r.region} · Sentinel-2, {epoch}",
+                "lon": round(p.x, 6), "lat": round(p.y, 6),
+                "bbox": [round(w - 0.002, 6), round(so - 0.002, 6), round(e + 0.002, 6),
+                         round(n + 0.002, 6)],
+            })
+        if not items:
+            (pkg / "index.html").unlink(missing_ok=True)
+            print(f"every outline of {a.aoi} is settled; no page")
+        else:
+            guide = GUIDE_LARGE if K.name == "large" else GUIDE
+            comment = (f"Map solar PV found by the EarthPV {K.title.lower()}")
+            page = write_page(pkg / "index.html", f"{name}{K.suffix}", items,
+                              guide=guide.replace("__AOI__", a.aoi),
+                              title=f"{K.title}, Sentinel-2 only",
+                              store=f"{name}{K.suffix}:{_draw_id(rev)}",
+                              export_name=K.export.format(aoi=name), back="../index.html",
+                              bright_roof=True, credits=[COPERNICUS],
+                              links=LINKS_FREE + [josm_link(HASHTAGS + [K.hashtag], comment)])
+            print(f"{len(items)} of {len(rev)} outlines on the Sentinel-2 page -> {page}")
     if unrendered:
         print(f"{len(unrendered)} outlines could not be rendered and are not on the page "
               f"(`package` retries them): {unrendered[:8]}")
-    rev["esri_date"] = dates
     gj = gpd.GeoDataFrame({
         "name": [f"{c} {v}" if isinstance(v, str) and v else c
                  for c, v in zip(rev.code, rev.verdict)],
-        "review_verdict": rev.verdict, "review_evidence": rev.evidence, "esri_date": rev.esri_date,
+        "review_verdict": rev.verdict, "review_evidence": rev.evidence,
         "stratum": rev.stratum, "k": rev.k, "area_ha": (rev.area_m2 / 1e4).round(1),
         "region": rev.region, "candidate_index": rev.candidate_index,
         **({"placement": rev.placement} if "placement" in rev.columns else {}),
         **({"review_flag": rev["flag"]} if "flag" in rev.columns else {}),
+        **{f"review_{c}": _text(rev, c) for c in ("imagery", "josm", "osm") if c in rev.columns},
     }, geometry=geoms, crs="EPSG:4326")
     gj.to_file(a.out / "review.geojson", driver="GeoJSON")
-    print(f"JOSM layer {a.out / 'review.geojson'}. Do not upload it: the outlines are the model's.")
     write_hub()
     return 0
 
 
-HUB_ROW = ('<tr><td>{link}</td><td>{left:,}</td><td>{left_km2:,.1f}</td><td>{judged:,} of {n:,} '
-           '({share:.0%})</td><td>{pv:,}</td><td>{not_pv:,}</td></tr>')
+HUB_ROW = ('<tr><td>{name}</td><td>{links}</td><td>{left:,}</td><td>{left_km2:,.1f}</td>'
+           '<td>{judged:,} of {n:,} ({share:.0%})</td><td>{mapped:,}</td><td>{pv:,}</td>'
+           '<td>{nots:,}</td></tr>')
 PLACES = {"rooftop": "on a roof", "ground_adjacent": "beside a building",
           "no_building": "open ground"}
 HUB_INTRO = {
-    "blob": """Very large model outlines, one look each: Sentinel-2 as the model saw it, its false colour,
-and Esri for texture. An outline counts towards capacity only once a person judges it solar
-or it is mapped in OpenStreetMap. Largest first within each country.""",
+    "blob": """Very large model outlines, one look each on Sentinel-2 alone: the composite the model saw,
+its native pixels and its false colour, all free Copernicus data. An outline counts towards
+capacity only once a person judges it solar on that page or it is mapped in OpenStreetMap.
+What 10 m pixels cannot settle is left unsure, and mapping it is how it then counts: each
+country's JOSM layer holds the same outlines, ready to map from. Largest first within each
+country.""",
     "large": """The model's large leads below the solar farm cap, from 10,000 m&sup2;, on roofs and on the
-ground, one look each: Sentinel-2 as the model saw it, its native pixels, its false colour, and
-Esri for texture. They already count, each at the share its size class is usually right; a
-verdict replaces that share for its own lead (solar: real, a roof outline at 1/2.5 of its area;
-not solar: nothing). Largest first
-within each country. The <a href="../oversize_review/index.html">solar farm review</a> has the
-outlines above the cap.""",
+ground. They are reviewed in JOSM while mapping: open a country's layer beside the
+OpenStreetMap data, look at each lead on the imagery JOSM offers for mapping and map the solar
+that is there; mark a lead with none <code>earthpv:review=not_pv</code> and save the layer. A
+lead mapped counts from the map once the country's solar is pulled again. They already count,
+each at the share its size class is usually right, and a lead found not solar in JOSM keeps
+that share: a judgement on imagery licensed for mapping prices nothing. Where a country has
+a Sentinel-2 page (<code>--page</code>), a verdict given there on 10 m pixels alone replaces the
+share. Largest first within each country. The
+<a href="../oversize_review/index.html">solar farm review</a> has the outlines above the cap.""",
 }
 HUB = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>__TITLE__</title>
@@ -703,45 +972,54 @@ HUB = """<!doctype html>
 :root { color-scheme: light dark; --ink: light-dark(#1d2330, #e6e9ef);
   --muted: light-dark(#5d6677, #98a2b3); --line: light-dark(#d9dde5, #2a3140);
   --accent: light-dark(#2563eb, #6ea8ff); --bg: light-dark(#f6f7f9, #0f131a); }
-body { margin: 0 auto; max-width: 860px; padding: 24px 16px; background: var(--bg);
+body { margin: 0 auto; max-width: 980px; padding: 24px 16px; background: var(--bg);
   color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
 h1 { font-size: 22px; margin: 0 0 8px; }
 p { color: var(--muted); }
 a { color: var(--accent); }
+.wide { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
 th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right;
   font-variant-numeric: tabular-nums; }
-th:first-child, td:first-child { text-align: left; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
 th { font-size: 13px; color: var(--muted); font-weight: 600; }
 code { font-size: 13px; }
 </style></head><body>
 <h1>__TITLE__</h1>
 <p>__INTRO__</p>
-<table><thead><tr><th>Country</th><th>To judge</th><th>km&sup2; to judge</th><th>Judged</th>
-<th>Solar</th><th>Not solar</th></tr></thead><tbody>
+<div class="wide"><table><thead><tr><th>Country</th><th>Review in</th><th>To review</th>
+<th>km&sup2; to review</th><th>Checked</th><th>Mapped since</th><th>Judged solar</th>
+<th>Not solar</th></tr></thead><tbody>
 __ROWS__
-</tbody></table>
-<p>Counts are what <code>apply</code> has recorded. Progress since then is in each page, until
-you export it and run<br>
+</tbody></table></div>
+<p>Counts are what <code>apply</code> has recorded. <i>Mapped since</i> counts the outlines now in
+OpenStreetMap, by the pull <code>apply</code> last read; <i>Judged solar</i> and <i>Not solar</i>
+count verdicts on a Sentinel-2 page (and on the review pages before 20 November 2026) and
+outlines found not solar in JOSM. Record a Sentinel-2 page's export with<br>
 <code>pixi run __TASK__ apply --aoi &lt;country&gt; --reviewer "&lt;name&gt;" --verdicts
 &lt;the export&gt;</code><br>
-then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atlas, and
-<code>scripts/release_leads.py --aoi &lt;country&gt; --upload</code>: outlines judged solar become
-the country's confirmed leads for mappers, and those judged not solar leave its lead files.</p>
+and a JOSM layer you saved with <code>--josm &lt;the layer&gt;</code> in its place. After
+mapping, pull the country's OpenStreetMap solar again and apply with it as
+<code>--labels</code>; then <code>earthpv density --aoi &lt;country&gt; --districts</code>, the
+atlas, and <code>scripts/release_leads.py --aoi &lt;country&gt; --upload</code>.</p>
 </body></html>
 """
 
 
 def write_hub() -> Path:
     """`<packages>/index.html` (`data/oversize_review/` or `data/large_review/`): every country's
-    page and what `apply` has recorded."""
+    page and JOSM layer, and what `apply` has recorded."""
     from release_leads import country_name
 
     rows = []
     for r in share_table():
-        name = country_name(r["aoi"])
-        link = f'<a href="{r["aoi"]}/index.html">{name}</a>' if r["page"] else name
-        rows.append(HUB_ROW.format(link=link, share=r["judged"] / max(r["n"], 1), **r))
+        links = [f'<a href="{r["aoi"]}/index.html">Sentinel-2 page</a>' if r["page"] else "",
+                 f'<a href="{r["aoi"]}/{r["aoi"]}{K.suffix}.osm">JOSM layer</a>'
+                 if r["josm"] else ""]
+        rows.append(HUB_ROW.format(name=country_name(r["aoi"]),
+                                   links=" &middot; ".join(x for x in links if x) or "&ndash;",
+                                   share=r["judged"] / max(r["n"], 1),
+                                   nots=r["not_pv"] + r["josm_not"], **r))
     K.packages.mkdir(parents=True, exist_ok=True)
     out = K.packages / "index.html"
     out.write_text(HUB.replace("__TITLE__", K.title).replace("__INTRO__", HUB_INTRO[K.name])
@@ -755,13 +1033,12 @@ def _month(day: str) -> str:
     return _d.fromisoformat(day).strftime("%b %Y")
 
 
-def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = True,
-            context_min_m: float = CONTEXT_MIN_M, detail_m: float = DETAIL_M,
-            esri_min_m: float | None = None) -> tuple[bool, str | None]:
-    """One outline's four panels as a 2 x 2 JPEG. Returns whether the panels are as asked (an
-    Esri fetch that failed is not, and wants another try) and the Esri capture date. The
-    widths are the review kind's (`Kind`); `esri_min_m` None gives Esri the composite's."""
-    from PIL import Image
+def _s2_panels(geom, comp_dir: Path, origin, epoch: str, context_min_m: float = CONTEXT_MIN_M,
+               detail_m: float = DETAIL_M):
+    """The outline's three Sentinel-2 panels, its outline drawn on each: true colour around
+    it, its native 10 m pixels close in, false colour (SWIR, NIR, red). Also returns its
+    representative point, its extent in metres and the context panels' width. Shared with
+    scripts/maproulette_review.py."""
     from pyproj import Transformer
 
     rep = geom.representative_point()
@@ -784,21 +1061,27 @@ def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = Tr
         _caption(_outline(_rgb(ctx, bands, FALSE_RGB), gu, ctx_tf),
                  "false colour: SWIR, NIR, red"),
     ]
-    esri_date, ok = None, True
-    if esri:
-        esri_side = side if esri_min_m is None else max(esri_min_m, 1.6 * extent)
-        im, esri_date = _esri(geom, rep, esri_side)
-        ok = im is not None
-        width = "" if esri_min_m is None else f", {esri_side:,.0f} m across"
-        panels.append(_caption(im, f"Esri World Imagery {esri_date or '(no capture date)'}{width}"))
-    if len(panels) < 4 or panels[3] is None:
-        panels = panels[:3] + [_caption(Image.new("RGB", (PANEL, PANEL), (40, 40, 40)),
-                                        "Esri not fetched")]
+    return panels, rep, extent, side
+
+
+def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = False,
+            context_min_m: float = CONTEXT_MIN_M, detail_m: float = DETAIL_M,
+            esri_min_m: float | None = None) -> tuple[bool, None]:
+    """One outline's three Sentinel-2 panels as a 2 x 2 JPEG, the fourth quarter blank (for
+    scripts/validate_steep_lead_screen.py). Until 2026-11-19 the fourth was Esri World
+    Imagery, fetched and saved here; Esri's terms allow no saving of its imagery, so it is
+    gone, and `esri` and `esri_min_m` are ignored. The review pages show Sentinel-2 alone
+    since 2026-11-20."""
+    from PIL import Image
+
+    panels, *_ = _s2_panels(geom, comp_dir, origin, epoch, context_min_m, detail_m)
+    panels.append(_caption(Image.new("RGB", (PANEL, PANEL), (40, 40, 40)),
+                           "high-resolution imagery: see the links"))
     sheet = Image.new("RGB", (2 * PANEL, 2 * PANEL))
     for i, p in enumerate(panels):
         sheet.paste(p, ((i % 2) * PANEL, (i // 2) * PANEL))
     sheet.save(out, "JPEG", quality=86)
-    return ok, esri_date
+    return True, None
 
 
 def _transform(geom, tr):
@@ -873,62 +1156,27 @@ def _caption(im, text: str):
     return im
 
 
-def _esri(geom, rep, side: float):
-    """Esri World Imagery over the context window (Web Mercator, so the crop is square), the
-    outline drawn on it, and the capture date at the outline's centre (the calibration
-    sampler's own query). (None, None) on any network failure.
-
-    Where Esri holds nothing as fine as the window asks for (most of Namibia stops at zoom 17,
-    about 1.2 m), `export` answers HTTP 500, so a failed request is asked again at half and
-    then a quarter of the pixels over the same window and scaled up: the large installation
-    review's 250 m windows ask for 0.5 m."""
-    import io
-    import math
-    import urllib.request
-
-    from PIL import Image, ImageDraw
-    from pyproj import Transformer
-
-    from propose_calibration_candidates import esri_capture
-
-    to_m = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
-    gm = _transform(geom, to_m)
-    x0, y0, x1, y1 = gm.bounds
-    half = side / math.cos(math.radians(rep.y)) / 2
-    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    bbox = (cx - half, cy - half, cx + half, cy + half)
-    im = None
-    for px in (PANEL, PANEL // 2, PANEL // 4):
-        url = ("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/"
-               f"export?bbox={','.join(f'{v:.2f}' for v in bbox)}&bboxSR=3857&imageSR=3857"
-               f"&size={px},{px}&format=jpg&f=image")
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "earthpv-oversize-review"})
-            im = Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=60).read())).convert("RGB")
-            break
-        except Exception:  # noqa: BLE001 -- coarser next; the panel says it is missing at last
-            continue
-    if im is None:
-        return None, None
-    if im.size != (PANEL, PANEL):
-        im = im.resize((PANEL, PANEL), Image.Resampling.BICUBIC)
-    d = ImageDraw.Draw(im)
-    scale = PANEL / (2 * half)
-    for part in getattr(gm, "geoms", [gm]):
-        for ring in [part.exterior, *part.interiors]:
-            d.line([((x - bbox[0]) * scale, (bbox[3] - y) * scale) for x, y in ring.coords],
-                   fill=YELLOW, width=2)
-    cap = esri_capture(rep.x, rep.y)
-    return im, (cap["date"].isoformat() if cap else None)
-
-
 def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: str):
-    """The page's export (`code,imagery_date,verdict,note`) into review.csv's rows."""
+    """The page's export (`code,imagery_date,verdict,note`) into review.csv's rows. Only an
+    export of a Sentinel-2 page is taken: every verdict in it must carry `S2_ONLY` in its
+    `imagery_date` (owner, 2026-11-20: the project uses no verdict drawn from imagery it may not
+    use, and the pages before showed Esri World Imagery). review.csv's `imagery` records it."""
     import numpy as np
     import pandas as pd
 
     v = pd.read_csv(verdicts, dtype=str).fillna("").set_index("code")
     v = v.reindex(rev.code).fillna("")
+    given = v["verdict"].ne("")
+    imagery = v["imagery_date"] if "imagery_date" in v.columns else pd.Series("", index=v.index)
+    other = given & ~imagery.str.startswith(S2_ONLY)
+    if other.any():
+        raise SystemExit(
+            f"{verdicts}: {int(other.sum())} of its {int(given.sum())} verdicts come from a page "
+            "that showed more than Sentinel-2 (pages drawn before 2026-11-20 had an Esri World "
+            "Imagery panel), and the project uses no verdict drawn from imagery it is not "
+            "licensed to use for that. Draw the page again (`package --page`), which shows "
+            "Sentinel-2 alone, and judge there; or map the installations in OpenStreetMap "
+            "(`apply --josm`).")
     queue = (rev["stratum"] == "queue").to_numpy()
     prev0 = rev["verdict"].fillna("").to_numpy()
     missing = sorted(set(rev.code[(v.verdict.to_numpy() == "") & ~queue & (prev0 == "")]))
@@ -985,6 +1233,8 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
            else [""] * len(rev))
     rev["evidence"] = [(f"{reviewer}: {n}" if n else f"{reviewer}") if f else o
                        for n, f, o in zip(note, fresh, old)]
+    # What the verdict was read from; blank for the verdicts applied before 2026-11-20.
+    rev["imagery"] = np.where(fresh, S2_ONLY, _text(rev, "imagery").to_numpy())
     if unsure_as is None and open_q.any():
         rev.loc[open_q, "evidence"] = rev.loc[open_q, "evidence"].astype(str) + " (unsure)"
     for c in unsure:
@@ -1019,15 +1269,24 @@ def main() -> int:
     for name in ("draw", "package"):
         q = sub.choices[name]
         q.add_argument("--out", type=Path, default=None)
-        q.add_argument("--no-esri", action="store_true", help="leave the Esri panel out (offline)")
-        q.add_argument("--force", action="store_true", help="re-render crops that exist")
+        q.add_argument("--page", action=argparse.BooleanOptionalAction, default=None,
+                       help="write the Sentinel-2 page as well as the JOSM layer (default: yes "
+                            "for the blob review; for the large review, which is done in JOSM, "
+                            "only where a Sentinel-2 page was drawn before)")
+        q.add_argument("--force", action="store_true", help="render the Sentinel-2 panels again")
         q.add_argument("--workers", type=int, default=4)
         q.add_argument("--include-judged", action="store_true",
-                       help="keep outlines with a verdict on the page, to judge them again")
+                       help="keep outlines already settled on the page and in the JOSM layer, "
+                            "to judge them again")
     p = sub.choices["apply"]
     p.add_argument("--review", type=Path, default=None)
-    p.add_argument("--verdicts", type=Path, default=None,
-                   help="the review page's export (code,imagery_date,verdict,note)")
+    src = p.add_mutually_exclusive_group()
+    src.add_argument("--verdicts", type=Path, default=None,
+                     help="the Sentinel-2 page's export (code,imagery_date,verdict,note); an "
+                          "export of a page that showed other imagery is refused")
+    src.add_argument("--josm", type=Path, default=None,
+                     help="the JOSM review layer, saved after setting earthpv:review on its "
+                          "outlines (mapped, not_pv, bright_roof, unsure)")
     p.add_argument("--unsure-as", choices=VERDICTS, default=None,
                    help="price an outline left unsure as this verdict (default: a queue outline "
                         "stays open; a census or sample outline is refused)")

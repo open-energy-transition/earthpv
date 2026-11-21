@@ -6,11 +6,12 @@ Sixteen checks in five stages, in the order a country goes through them: detecti
 space, ground truth from the map, checks by people, the installations below 400 m2, and
 checks independent of the model. Each carries the quality level that needs it
 (`docs/atlas-quality-levels.md`, `scripts/build_atlas_pages.CRITERIA`), or none where it is a
-step towards one (the two review pages) or context (official figures).
+step towards one (the two reviews) or context (official figures).
 
 Every status is read from something on record, never typed: the page's own data block
 (`totals`), the country's atlas config (`validation` declarations), its calibration table,
-the review pages' verdicts (`results/<aoi>_{oversize,large}_review/review.csv`), the
+the reviews' records (`results/<aoi>_{oversize,large}_review/review.csv`: verdicts given on
+Sentinel-2, outcomes recorded in JOSM, outlines mapped in OpenStreetMap since), the
 checkpoint decision (`results/<aoi>_checkpoint_decision.json`), the plausibility check
 (`<density>/plausibility.csv`), the rooftop classifier's random-cell log and the glint
 coverage (`results/glint_coverage/<aoi>.json`, scripts/glint_coverage.py). Where no file
@@ -57,7 +58,7 @@ CHECKS = {
     "ground_truth": ("map", "Local ground truth", "silver"),
     "leads": ("map", "Mapping leads drawn up", "bronze"),
     "blobs": ("people", "Very large outlines judged (solar farm review)", None),
-    "large_review": ("people", "Large installations judged (review page)", None),
+    "large_review": ("people", "Large installations reviewed and mapped in JOSM", None),
     "leads_mapped": ("people", "A third of the large leads checked", "silver"),
     "retrained": ("people", "Model retrained on the checked leads", "silver"),
     "small": ("small", "Installations below 400 m&sup2; estimated", "gold"),
@@ -97,31 +98,73 @@ def _strip_tags(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<br\s*/?>", " ", s)).strip()
 
 
+# How the two reviews are done (owner, 2026-11-20): the very large outlines judged on the
+# Sentinel-2 imagery the model saw, the large ones reviewed in JOSM while mapping, so that no
+# verdict rests on imagery the project may not use.
+BLOB_HOW = ("They are judged on the Sentinel-2 imagery the model saw, or mapped; one not yet "
+            "judged counts only once it is mapped.")
+LARGE_HOW = ("They are reviewed in JOSM and the real ones mapped in OpenStreetMap, which then "
+             "counts them; one not yet mapped is priced by the measured share of real outlines "
+             "of its size.")
+
+
+def leads_need(min_m2: float) -> str:
+    """What the Silver lead rule asks for, as the checklist says it."""
+    return (f"Not recorded yet. Needed: a third of the leads of {min_m2 / 1e4:g} ha and up "
+            "reviewed in JOSM, the real ones mapped in OpenStreetMap, and a third of the very "
+            "large outlines judged on Sentinel-2 or mapped.")
+
+
 def _review(aoi: str, kind: str) -> dict | None:
-    """Verdict counts of a review page: `kind` oversize (solar farm review, above the merge
-    cap) or large (10,000 m2 up to the cap). None when the country has no page."""
+    """What a review has settled: `kind` oversize (solar farm review, above the merge cap) or
+    large (10,000 m2 up to the cap). Each outline counts once, in this order: `mapped` (in
+    OpenStreetMap since the draw, by the pull `apply` last read, or marked mapped in JOSM);
+    a verdict on a Sentinel-2 page (`s2_pv`, `s2_not`; review.csv's `imagery` says so) or on a
+    review page before 2026-11-20 (`page_pv`, `page_not`); `josm_not`, found not solar in
+    JOSM; `unsure`. `checked` is all but the last. None when the country has no review."""
     p = Path("results") / f"{aoi}_{kind}_review" / "review.csv"
     if not p.exists():
         return None
+    keys = ("mapped", "s2_pv", "s2_not", "page_pv", "page_not", "josm_not", "unsure")
+    n = dict.fromkeys(("queue", *keys), 0)
     with p.open(newline="") as f:
-        verdicts = [(r.get("verdict") or "").strip() for r in csv.DictReader(f)]
-    return {"queue": len(verdicts), "pv": verdicts.count("pv"),
-            "not_pv": verdicts.count("not_pv"), "unsure": verdicts.count("unsure")}
+        for r in csv.DictReader(f):
+            v, j = (r.get("verdict") or "").strip(), (r.get("josm") or "").strip()
+            src = "s2" if (r.get("imagery") or "").startswith("Sentinel-2") else "page"
+            n["queue"] += 1
+            if (r.get("osm") or "").strip() == "mapped" or j == "mapped":
+                n["mapped"] += 1
+            elif v in ("pv", "not_pv"):
+                n[f"{src}_{'pv' if v == 'pv' else 'not'}"] += 1
+            elif j in ("not_pv", "bright_roof"):
+                n["josm_not"] += 1
+            elif "unsure" in (v, j):
+                n["unsure"] += 1
+    n["checked"] = sum(n[k] for k in keys[:-1])
+    return n
 
 
-def _review_row(r: dict | None, unjudged: str) -> tuple[str, str]:
+def _review_row(r: dict | None, how: str) -> tuple[str, str]:
     if r is None:
-        return "todo", "No review page on record for this run yet."
-    q, pv, no, uns = r["queue"], r["pv"], r["not_pv"], r["unsure"]
+        return "todo", "No review on record for this run yet."
+    q, done = r["queue"], r["checked"]
     if q == 0:
         return "na", "The model drew no outline of this size."
-    judged = pv + no
-    split = f"{_n(pv)} solar, {_n(no)} not solar" + (f", {_n(uns)} unsure" if uns else "")
-    if judged == q:
-        return "done", f"All {_n(q)} judged: {split}."
-    if judged:
-        return "partial", f"{_n(judged)} of {_n(q)} judged ({split}). {unjudged}"
-    return "todo", f"None of the {_n(q)} judged yet. {unjudged}"
+
+    def pair(pv, no, where):  # both counts whenever either is there, as pages always showed
+        return f"{_n(pv)} judged solar and {_n(no)} not solar {where}" if pv or no else ""
+
+    parts = [f"{_n(r['mapped'])} mapped in OpenStreetMap" if r["mapped"] else "",
+             pair(r["s2_pv"], r["s2_not"], "on Sentinel-2"),
+             pair(r["page_pv"], r["page_not"], "on the earlier review page"),
+             f"{_n(r['josm_not'])} found not solar in JOSM" if r["josm_not"] else "",
+             f"{_n(r['unsure'])} unsure" if r["unsure"] else ""]
+    split = "; ".join(x for x in parts if x)
+    if done == q:
+        return "done", f"All {_n(q)} checked: {split}."
+    if done:
+        return "partial", f"{_n(done)} of {_n(q)} checked: {split}. {how}"
+    return "todo", f"None of the {_n(q)} checked yet. {how}"
 
 
 def _model(aoi: str) -> tuple[str, str]:
@@ -280,10 +323,10 @@ def checklist(aoi: str, totals: dict, shown: str, earned: str,
     else:
         rows["leads"] = ("todo", "No leads drawn up yet.")
 
-    rows["blobs"] = _review_row(blob_r, "One not yet judged counts only once it is mapped.")
-    rows["large_review"] = _review_row(
-        large_r, "One not yet judged is priced by the measured share of real outlines of its "
-                 "size.")
+    # Verdicts are given on Sentinel-2 alone, and the large leads are reviewed in JOSM while
+    # mapping (owner, 2026-11-20): no verdict rests on imagery the project may not use.
+    rows["blobs"] = _review_row(blob_r, BLOB_HOW)
+    rows["large_review"] = _review_row(large_r, LARGE_HOW)
 
     lr = atlas.leads_retrained(aoi)
     if lr["mapped"]:
@@ -295,16 +338,14 @@ def checklist(aoi: str, totals: dict, shown: str, earned: str,
             + f" of the {_date(lr['leads'])} lead file."))
     else:
         # The share counts the leads of 1 ha and up and the blobs (owner, 2026-11-19): exactly
-        # the outlines of the two review pages, so their verdicts are the progress.
-        seen = [f"{_n(r['pv'] + r['not_pv'])} of {_n(r['queue'])} {what} "
-                f"({100 * (r['pv'] + r['not_pv']) // r['queue']}%)"   # down: 99%, not 100%
+        # the outlines of the two reviews, so what they have settled is the progress.
+        seen = [f"{_n(r['checked'])} of {_n(r['queue'])} {what} "
+                f"({100 * r['checked'] // r['queue']}%)"   # down: 99%, not 100%
                 for r, what in ((blob_r, "very large outlines"), (large_r, "large installations"))
-                if r and r["queue"] and r["pv"] + r["not_pv"]]
-        need = ("Not recorded yet. Needed: a verdict, mapped in OpenStreetMap or judged not "
-                f"solar, on a third of the leads of {atlas.LEAD_RULE_MIN_M2 / 1e4:g} ha and up "
-                "and of the very large outlines, the outlines of the two review pages.")
-        rows["leads_mapped"] = (("partial", f"{need} On the review pages so far: "
-                                 f"{' and '.join(seen)}.") if seen else ("todo", need))
+                if r and r["queue"] and r["checked"]]
+        need = leads_need(atlas.LEAD_RULE_MIN_M2)
+        rows["leads_mapped"] = (("partial", f"{need} Checked so far: {' and '.join(seen)}.")
+                                if seen else ("todo", need))
     if lr["retrained"]:
         rows["retrained"] = ("done", f"{html.escape(lr['model'])}, recorded on {_date(lr['date'])}.")
     elif lr["mapped"]:

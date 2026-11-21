@@ -181,7 +181,7 @@ nav:
   # map calibration areas (4), share local data (5), then running the pipeline yourself.
   - Contribute:
       - contribute/index.md
-      - Judge large installations: contribute/review.md
+      - Check large installations: contribute/review.md
       - Map the leads: contribute/leads.md
       - Map a calibration area: contribute/calibration-areas.md
       - Map with iD: contribute/id.md

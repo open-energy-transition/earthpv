@@ -25,7 +25,7 @@ the outline. Each turn starts from a more complete map and a more local model.
 | a browser and ten minutes | map a few of a country's confirmed leads in iD | [Map the leads in iD](leads.md#a-few-leads-in-id) |
 | an evening and JOSM | work through a country's confirmed leads with the Todo list | [Map the leads with JOSM](leads.md#2-set-up-josm-and-the-three-plugins) |
 | a few evenings | map a calibration area completely, starting at the star | [Map a calibration area](calibration-areas.md) |
-| EarthPV running on your PC | judge the solar farms and large installations on the review pages | [Judge large installations](review.md) |
+| EarthPV running on your PC | judge the solar farms on Sentinel-2 and review the large installations in JOSM | [Check large installations](review.md) |
 | knowledge of your country | point us to its register, statistics or a study | [Share a local dataset](local-data.md) |
 | an NVIDIA or AMD graphics card | build the first atlas for a country that has none | [Build an atlas on your PC](new-atlas.md) |
 
@@ -56,32 +56,32 @@ links the **confirmed leads** for stage 3: outlines the model drew more than 100
 solar in OpenStreetMap that a person has since judged solar on a review page, largest first,
 in `<country>_pv_confirmed_leads.geojson`. Every one is a real installation waiting to be
 traced. The model's other outlines are not handed to mappers: drawn from 10 m pixels and
-unchecked, many are false alarms, so they go to the review pages first. A country has a
+unchecked, many are false alarms, so they go to the reviews first. A country has a
 confirmed file once someone has judged its review pages.
 
 ### 3. Check the leads
 
 *Done by people.* A lead is checked when a person has looked at it and either mapped the
-installation in OpenStreetMap or judged it not solar. There are two ways in, and the first
+installation in OpenStreetMap or found it not solar. There are two ways in, and the first
 feeds the second.
 
-**Judge the large outlines on a review page.** If you run EarthPV on your own PC, building
-an atlas or keeping one current, every country's run draws two review pages, one picture per
-outline, each picture four views of the imagery the model saw: Sentinel-2 in true colour, at
-its native 10 m pixels and in false colour, and Esri World Imagery with its capture date.
+**Check the large outlines.** If you run EarthPV on your own PC, building an atlas or keeping
+one current, every country's run sets up two reviews. A verdict EarthPV uses rests on free
+Sentinel-2 imagery or is an installation mapped in OpenStreetMap: the high-resolution
+imagery in Google, Bing, Esri and Mapbox may be used for tracing into OpenStreetMap, not for
+checking EarthPV's figures.
 
-| page | what it holds | what a verdict changes |
-|---|---|---|
-| **Solar farm review** | outlines above 100,000 m<sup>2</sup> (10 ha) | nothing this size counts until it is mapped or a person judges it solar; each park you confirm is added whole |
-| **Large installation review** | leads from 10,000 m<sup>2</sup> (1 ha) up to 10 ha, on roofs and on the ground | these already count at the share their size usually turns out real; your verdict replaces that share for the one outline |
+| review | what it holds | how | what it changes |
+|---|---|---|---|
+| **Solar farm review** | outlines above 100,000 m<sup>2</sup> (10 ha) | on a page of three Sentinel-2 pictures per outline, the imagery the model saw | nothing this size counts until it is mapped or a person judges it solar; each park you confirm is added whole |
+| **Large installation review** | leads from 10,000 m<sup>2</sup> (1 ha) up to 10 ha, on roofs and on the ground | in JOSM, mapping the real ones into OpenStreetMap | these already count at the share their size usually turns out real; one you map counts from the map, at its real shape |
 
-Press <kbd>1</kbd> for solar, <kbd>2</kbd> for not solar, <kbd>3</kbd> for unsure and
-<kbd>4</kbd> for a bright roof (not solar, kept apart so those false alarms can be
-studied). Then:
+On the solar farm page, press <kbd>1</kbd> for solar, <kbd>2</kbd> for not solar,
+<kbd>3</kbd> for unsure and <kbd>4</kbd> for a bright roof (not solar, kept apart so those
+false alarms can be studied). Then:
 
-1. **Export** your verdicts from the page, and apply them under your name (`large-review`
-   for the second page). Any named reviewer's verdict counts, and your name is kept beside
-   each one:
+1. **Export** your verdicts from the page, and apply them under your name. Any named
+   reviewer's verdict counts, and your name is kept beside each one:
 
     ```bash
     pixi run blob-review apply --aoi YOUR_AOI --reviewer "Your name" \
@@ -98,8 +98,9 @@ studied). Then:
 A verdict takes a few seconds and is the quickest way to make an atlas right where it matters
 most, at its largest installations. How often a large outline is solar differs by country
 more than by anything else: of the large installations judged so far, 543 of 548 were solar
-in the Netherlands and 83 of 842 in Texas. [Judge large installations](review.md) has the
-whole guide.
+in the Netherlands and 83 of 842 in Texas. For the large installations, open the country's
+JOSM review layer, map the solar that is there and mark a lead with none `not_pv`; what you
+map counts from the map. [Check large installations](review.md) has the whole guide.
 
 **Map the confirmed leads in JOSM or iD.** Open the country's confirmed-lead file from its
 atlas and work through it, largest first. Find each installation on high-resolution imagery,
@@ -150,7 +151,7 @@ turns:
 | level | what it means | what gets a country there | stages |
 |---|---|---|---|
 | **Bronze** | the wheel is set up | a model trained on the country's own OpenStreetMap solar, the mapped solar counted once, the model's large outlines priced by measured precision, blobs counted only once checked, and the mapping leads drawn up | 1, 2 |
-| **Silver** | the wheel has turned once | local ground truth (the country's mapped installations as a reference, or complete calibration areas in use), **and** a verdict on a third of the leads of 1 ha and up and a third of the blobs, given on the review pages, the real ones mapped, followed by a retrain of the model on the result | 3, 6, and 4 |
+| **Silver** | the wheel has turned once | local ground truth (the country's mapped installations as a reference, or complete calibration areas in use), **and** a third of the leads of 1 ha and up reviewed in JOSM and a third of the blobs judged on Sentinel-2, the real ones mapped, followed by a retrain of the model on the result | 3, 6, and 4 |
 | **Gold** | the wheel reaches below 400 m<sup>2</sup> | installations below 400 m<sup>2</sup> estimated from complete calibration areas across the density range or a complete national register, the estimate holding up when each area is left out in turn, people checking the rooftop classifier's results on cells drawn at random and on its score for every building, and solar glint measured from space on at least a third of the installations of 1 ha and more mapped in OpenStreetMap (never fewer than 100, and 1,000 suffice) | 4 or 5, then 6, and 1 |
 
 The levels add up: Silver needs everything Bronze has, and Gold everything Silver has. So

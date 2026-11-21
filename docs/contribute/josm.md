@@ -130,6 +130,14 @@ area)*), the hashtags, and `source=Esri World Imagery` in the changeset tags.
 
 Then [report your progress](report.md): finished, partly done, or not mappable.
 
+## The large installation review
+
+The same setup serves the review of a country's large installations, the model's leads of
+1 to 10 ha: its review layer opens in JOSM, you map the solar that is there and mark a lead
+with none. The editor's imagery may be used for exactly that, tracing into OpenStreetMap, and
+the installations you map are what EarthPV counts. See
+[Check large installations](review.md#the-large-installation-review-review-in-josm-while-mapping).
+
 ## Your own proposed area
 
 A box from the atlas's **Propose a calibration area** button also opens in JOSM: it arrives

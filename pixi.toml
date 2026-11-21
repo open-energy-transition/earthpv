@@ -107,12 +107,12 @@ roofclf-tiles = "python scripts/tile_roofclf_detections_geojson.py"
 # partial correlations controlling for installation size) -- re-run when a quadrat is
 # added or `earthpv roof-classifier` is re-run. See docs/methods/density.md.
 quadrat-correlations = "python scripts/quadrat_correlations.py"
-# Judge very large model outlines (blobs) by eye: draw|package|apply|status. A step of every
-# country's run; only a judged or mapped blob counts. See scripts/oversize_review.py.
+# Judge very large model outlines (blobs) on Sentinel-2 alone: draw|package|apply|status. A step
+# of every country's run; only a judged or mapped blob counts. See scripts/oversize_review.py.
 flywheel-status = "python scripts/flywheel_status.py"
 blob-review = "python scripts/oversize_review.py"
-# The same review for the large leads below the cap (10,000 m2 up to it): a judged lead is
-# priced by its verdict instead of its size bin's P(real). A step of every country's run too.
+# The same review for the large leads below the cap (10,000 m2 up to it), done in JOSM while
+# mapping them into OpenStreetMap (`apply --josm`). A step of every country's run too.
 large-review = "python scripts/oversize_review.py --kind large"
 # Regenerate every figure and interactive page the docs site and README embed.
 docs-figures = "python scripts/build_docs_figures.py"

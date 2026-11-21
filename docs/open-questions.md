@@ -858,3 +858,26 @@ rule today names OSM installations only. It overlaps 13's step that pulls four y
 the large-lead and blob review populations: if both run, they should share one pull
 rather than read the same outlines twice.
 
+### 26. Checks by people on imagery the project may use (2026-11-20)
+
+**The rule.** Since 2026-11-20 no verdict EarthPV uses rests on Google, Bing, Esri or Mapbox
+imagery: their terms allow it, in an editor, for tracing into OpenStreetMap, not for checking
+a published dataset (Esri's Master Agreement 3.3(b); Mapbox's product terms allow deriving
+only for OpenStreetMap). The solar farm review now shows Sentinel-2 alone, and the large
+installation review is done in JOSM, where the installation mapped is the verdict
+([Check large installations](contribute/review.md)). Four things are still at odds with it
+or undecided:
+
+- **The rooftop classifier's random-cell and level checks** (`scripts/roofclf_review_page.py`)
+  judge roofs below 400 m<sup>2</sup> on Esri and Mapbox, which 10 m pixels cannot replace.
+  The form the rule allows is the calibration area's: map every panel in each random cell in
+  OpenStreetMap from an editor, and read precision and the level from the map. A random cell
+  is then a small calibration area drawn at random, under the same imagery-date gate.
+- **Verdicts given before 2026-11-20** (4,495 blobs and 8,338 large leads, open question 25)
+  were read beside Esri World Imagery. They stand as given. Re-judging the blobs on the
+  Sentinel-2 page, or auditing them with glint (25), would put them on free imagery.
+- **Verdicts as training negatives** (`scripts/verdict_hard_negatives.py`, Texas v47) are
+  Esri-era verdicts, and both providers forbid training models on their imagery.
+- **A lead found not solar in JOSM** prices nothing today and keeps its size class's share.
+  Whether it should count at 0, as a Sentinel-2 verdict does, is the owner's call; the marks
+  are kept in review.csv's `josm` column, so it can be decided without a second look.

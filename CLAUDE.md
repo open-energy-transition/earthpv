@@ -58,9 +58,10 @@ earthpv infer  --aoi <aoi> --checkpoint <ckpt>
 earthpv postprocess --aoi <aoi> --threshold 0.3
 earthpv export --aoi <aoi>
 pixi run blob-review draw --aoi <aoi>   # solar farm review: every outline above the merge cap.
-#   Judge in data/oversize_review/index.html, then `pixi run blob-review apply --verdicts ...`
+#   Judge on Sentinel-2 in data/oversize_review/index.html, then `blob-review apply --verdicts ...`
 pixi run large-review draw --aoi <aoi>  # large installation review: leads 10,000 m2 up to the
-#   cap. Judge in data/large_review/index.html, then `pixi run large-review apply ...`
+#   cap, reviewed in JOSM while mapping (data/large_review/<aoi>/<aoi>_large_review.osm), then
+#   `large-review apply --josm <saved layer>`; after a new OSM pull, `apply --labels <pull>`
 earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
@@ -96,6 +97,26 @@ transfer to French residential PV.
 
 An agent prepares each of these and **never judges them**; verdicts come from named people.
 
+- **No verdict from imagery the project may not use (owner, 2026-11-20).** A verdict that
+  feeds capacity, lead files, the quality checklist, a study or a training set rests on
+  Sentinel-2 (free Copernicus data) or is an installation mapped in OpenStreetMap. Google,
+  Bing, Esri and Mapbox imagery may be used only inside an OSM editor, for tracing into OSM
+  (Esri's terms forbid using its imagery to verify a published compilation, 3.3(b), and allow
+  tracing into open data; Mapbox's allow deriving only for OSM). So the blob page shows
+  Sentinel-2 alone and its links open only free data (`build_review_page.LINKS_FREE`);
+  `oversize_review apply` refuses an export without `imagery_date` = `Sentinel-2 only`
+  (`S2_ONLY`, every page before 2026-11-20 showed Esri) and records `imagery` per verdict; the
+  large review is done in JOSM, where the map is the verdict. Verdicts applied before
+  2026-11-20 stand (owner: "in the future"). **Still at odds with the rule, owner to decide:**
+  the roofclf random-cell and level pages (Esri + Mapbox panels; their verdicts feed the
+  checklist's `roofclf_checked`), `verdict_hard_negatives.py` (Esri-era verdicts as training
+  negatives), the MapRoulette pilot (`scripts/maproulette_review.py`, uncommitted; editor
+  imagery, `apply` refuses its CSV), and the research tools that fetch Esri
+  (`aef_render_review_tiles.py`,
+  `spain_greenhouse_check.py`, `osm_sweep_completeness_review.py`; `label_audit.py review`
+  now refuses); docs/open-questions.md 26.
+  Never build a new review whose verdicts rest on commercial imagery.
+
 - **roofclf random-cell review, after every national scoring pass (2026-11-19).** The
   calibration quadrats are curated and industrial-leaning; scoring well there is not evidence
   roofclf works on the rest of the country. `pixi run roofclf-review draw --aoi <aoi> --seed S`
@@ -125,7 +146,8 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   draws a blind, score-stratified review of unmapped roofs in densely mapped ~1 km boxes; a box
   found nearly complete is a candidate calibration area, which only the owner can declare.
 - **Solar farm (blob) review (owner, 2026-11-02).** A model outline above the merge cap stays
-  out of capacity until it is mapped or a person judges it solar. `run_country_compute.sh`
+  out of capacity until it is mapped or a person judges it solar on the Sentinel-2 page (three
+  composite panels, nothing else, since 2026-11-20). `run_country_compute.sh`
   draws a country's page after `export`; `data/oversize_review/index.html` lists every
   country's page and `pixi run blob-review status` the counts. Sittings can be partial: apply
   any export, then `density --districts` (no `--force`) and the atlas. Mechanics and pricing are
@@ -143,21 +165,31 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   held-out region decides when to stop.
   Verdicts as training negatives are an experiment (`scripts/verdict_hard_negatives.py`,
   Texas v47 vs control v47c, `scripts/run_texas_verdict_negatives.sh`), not a pipeline step.
-- **Large installation review (owner, 2026-11-10).** The same disk page for leads from
-  `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
+- **Large installation review (owner, 2026-11-10), in JOSM since 2026-11-20 (owner).** Leads
+  from `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
   `scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
-  `data/large_review/` -> /home, ~190 KB per lead), drawn after the blob page. Both draws are
-  retried once and never fatal, so check the page exists (a DNS outage once left one missing
-  while its step read done); `pixi run large-review status` says which countries have pages.
-  Any named reviewer's verdict counts (owner); it is a documented way to contribute
+  `data/large_review/` -> /home), drawn after the blob page. `draw` writes the JOSM layer
+  `data/large_review/<aoi>/<aoi>_large_review.osm` (`write_josm`: open leads largest first,
+  `upload="never" download="never"`, tags `earthpv:code`/`earthpv:review=todo`/`earthpv:draw`)
+  and no page. The reviewer maps the solar that is there into OSM (Todo list + continuous
+  download, `docs/contribute/review.md`) and marks a lead with none `earthpv:review=not_pv`;
+  `apply --josm <saved layer>` writes review.csv's `josm`/`josm_reviewer` columns and never
+  touches `verdict`. A mapped lead needs no mark: `apply` (and `draw`) set `osm` = `mapped` for
+  every lead the given `--labels` pull now covers, and the map counts it at its own shape. A
+  `not_pv` mark only takes the lead off the layer and counts as checked in the quality
+  checklist; it prices nothing (the lead keeps its bin's P(real)) and no lead file, study or
+  training set reads it. `--page` adds the Sentinel-2 page (`GUIDE_LARGE`), whose verdicts
+  price as before; once drawn, `draw` keeps it current, `--no-page` removes it, and `package`
+  removes a page from before 2026-11-20 (Esri). Both draws are
+  retried once and never fatal, so check the layer exists (a DNS outage once left one missing
+  while its step read done); `pixi run large-review status` says which countries have them.
+  Any named reviewer counts (owner); it is a documented way to contribute
   (`docs/contribute/review.md`). It matters most for large ROOF leads, whose bins price P(real)
   at 0.00-0.07 where reviewers found 92-99% solar. Both pages carry key 4 **"Bright roof"**:
   priced as `not_pv`, kept as `flag: bright_roof` in review.csv (`review_flag` in
   review.geojson, a `status` column) so the false alarm can be studied
   (`build_review_page.write_page(bright_roof=True)`; other pages on that builder keep three
-  keys, since their joins know only those). Esri's `export` answers HTTP 500 for detail finer
-  than it holds (zoom 17 in Namibia, Zambia, Yemen), so `_esri` steps down to half and a
-  quarter of the pixels.
+  keys, since their joins know only those).
 - **Imagery date is the gate on sparse areas, not mapping effort.** Out-of-domain random cells
   and low-density quadrats often sit under reference imagery too old to confirm or refute recent
   small PV, so a zero there is uninterpretable. Do not register such a quadrat (it pulls the
@@ -426,13 +458,16 @@ level, outside `process_cell`, so cached partials stay valid and no `--force` is
 `calibrate-candidates` carries them forward and `_table_evidence` guards them. A country without
 the block keeps the cap exactly.
 
-**The review page shows the imagery the model saw.** `draw` runs `package`: one 2 x 2 JPEG per
-outline in `data/oversize_review/<aoi>/crops/` (composite true colour, 10 m detail, false colour
-SWIR/NIR/red, Esri with capture date; fixed reflectance stretch) and `index.html` from
-`build_review_page.write_page` (keys 1/2/3, notes, Google/Bing/Wayback/JOSM links, CSV export
-`<aoi>_blob_verdicts.csv`; a judged outline leaves the page on the next `package`,
-`--include-judged` keeps it). Saved progress is keyed to the draw, so old verdicts cannot attach
-to a redraw's codes. The composite decides epoch, Esri decides texture: neither alone suffices.
+**The review page shows the imagery the model saw, and only that (2026-11-20).** `draw` runs
+`package`: three Sentinel-2 panels per outline in `data/oversize_review/<aoi>/crops/`
+(`<code>_s2`, `_pixels`, `_false`: composite true colour, 10 m detail, false colour
+SWIR/NIR/red; fixed reflectance stretch) and `index.html` from `build_review_page.write_page`
+(keys 1-4, notes, links `LINKS_FREE` + `josm_link`: Copernicus Browser, OSM, JOSM with the
+changeset hashtags; CSV export `<aoi>_blob_verdicts.csv` whose `imagery_date` is `Sentinel-2
+only, <window>`), plus the same outlines as a JOSM layer. A settled outline (verdict, JOSM
+`mapped`/`not_pv`, or `osm` = `mapped`) leaves the page and layer on the next `package`,
+`--include-judged` keeps it. Saved progress is keyed to the draw, so old verdicts cannot attach
+to a redraw's codes. What 10 m cannot settle stays unsure and out of capacity until mapped.
 
 **A verdict on a lead below the cap replaces its bin's P(real) (owner, 2026-11-10).** `apply
 --kind large` writes a `lead_review` block (`capacity_calibration.LEAD_REVIEW_KEY`;

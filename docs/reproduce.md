@@ -194,19 +194,24 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     # The solar farm review, a step of every run. Model outlines above the 100,000 m² merge
     # cap with no mapped solar nearby count only once a person judges them solar or they are
     # mapped. `draw` queues every one, largest first, and writes a review package on disk:
-    # four panels per outline (Sentinel-2 composite, its 10 m detail, false colour, Esri with
-    # its capture date) and a page to judge them in, one key per verdict.
+    # three Sentinel-2 panels per outline (the composite, its 10 m detail, false colour) and
+    # a page to judge them in, one key per verdict, plus a JOSM layer of the same outlines.
+    # A verdict rests on Sentinel-2 alone (owner, 2026-11-20): `apply` refuses the export
+    # of an older page, which showed Esri imagery.
     pixi run blob-review draw --aoi india
     #   open data/oversize_review/index.html (every country), judge as many as you like, export
     pixi run blob-review apply --aoi india --reviewer "<name>" --verdicts <the export>
     pixi run blob-review status                         # what each country has left
-    # The large installation review, a step of every run too: the same page for the leads
-    # from 10,000 m² up to the cap, rooftop and ground. These already count at their size
-    # bin's P(real); a verdict replaces it for its own lead (solar 1, not solar 0), and the
-    # bin's recall still applies. Any named reviewer's verdict counts.
+    # The large installation review, a step of every run too, for the leads from 10,000 m²
+    # up to the cap, rooftop and ground: reviewed in JOSM while mapping them into
+    # OpenStreetMap. `draw` writes the JOSM layer (no upload, no download); a lead mapped
+    # counts from the map once the country's solar is pulled again, one marked
+    # earthpv:review=not_pv leaves the review and keeps its size bin's P(real).
     pixi run large-review draw --aoi india
-    #   open data/large_review/index.html, judge, export
-    pixi run large-review apply --aoi india --reviewer "<name>" --verdicts <the export>
+    #   open data/large_review/india/india_large_review.osm in JOSM, map, mark, save the layer
+    pixi run large-review apply --aoi india --reviewer "<name>" --josm <the saved layer>
+    #   after a new OpenStreetMap pull, apply again with it as --labels <the new pull>
+    #   (`package --page` adds a Sentinel-2 page whose verdicts replace a lead's P(real))
     pixi run earthpv density --aoi india --districts    # no --force: the cells stay valid
 
     # Optional precision upgrade for the bins below 1,000 m², where glint is blind:
@@ -890,9 +895,10 @@ without it a number has no evidence behind it, and it is the one step no agent c
 you. The solar farm review (`pixi run blob-review`, in the density step) is the other step of
 that kind, but you can stop it whenever you like: a very large outline nobody has judged
 stays out of the capacity figures, so the atlas is honest at any point, and each park judged
-adds to it. The large installation review (`pixi run large-review`) is its companion for the
-outlines from 1 ha up to 10 ha: those already count at their size class's share, so it can
-be left at any point too ([Judge large installations](contribute/review.md)).
+adds to it. The large installation review (`pixi run large-review`, in JOSM, mapping the real
+installations into OpenStreetMap) is its companion for the outlines from 1 ha up to 10 ha:
+those already count at their size class's share, so it can be left at any point too
+([Check large installations](contribute/review.md)).
 
 ### 3. Build the data pack
 

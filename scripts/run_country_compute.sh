@@ -227,8 +227,9 @@ step postprocess  $PY -m earthpv.cli postprocess --aoi $AOI --threshold 0.3 --bu
 step thermal      $PY scripts/drop_solar_thermal.py --aoi $AOI --candidates
 step export       $PY -m earthpv.cli export --aoi $AOI --exclude-mapped --min-distance-m 100
 # Model outlines above the 100,000 m2 merge cap with no mapped solar nearby: queue every one,
-# largest first, and write its on-disk review package, Sentinel-2 composite and Esri panels plus
-# a review page (scripts/oversize_review.py; data/oversize_review/index.html lists every country).
+# largest first, and write its on-disk review package, three Sentinel-2 composite panels each
+# (the only imagery a verdict may rest on, owner 2026-11-20), a review page and a JOSM layer
+# (scripts/oversize_review.py; data/oversize_review/index.html lists every country).
 # Nothing counts until a person judges the page and runs `oversize_review.py apply`, so the atlas
 # below keeps the cap; a failure here (no outlines, no network) never stops the chain. Each draw
 # is tried twice, two minutes apart: on 2026-11-09 a DNS outage left Belgium with no page while
@@ -237,9 +238,10 @@ step oversize_review bash -c "$PY scripts/oversize_review.py draw --aoi $AOI --l
                      || { sleep 120; $PY scripts/oversize_review.py draw --aoi $AOI --labels $LABELS; } \
                      || echo 'REVIEW PAGE MISSING: oversize review package failed (non-fatal); re-run pixi run blob-review draw --aoi $AOI'"
 # The same review for the large leads BELOW the cap, 10,000 m2 up to it, on roofs and on the
-# ground (owner, 2026-11-10; scripts/oversize_review.py --kind large, data/large_review/index.html).
-# These already count, each at its size bin's P(real); a person's verdict replaces that price
-# for its own lead once `apply` has recorded it. Never fatal either.
+# ground (owner, 2026-11-10; scripts/oversize_review.py --kind large, data/large_review/index.html),
+# done in JOSM while mapping since 2026-11-20: `draw` writes the JOSM layer, no page. These
+# already count, each at its size bin's P(real); one mapped counts from the map once the
+# country's solar is pulled again. Never fatal either.
 step large_review bash -c "$PY scripts/oversize_review.py --kind large draw --aoi $AOI --labels $LABELS \
                      || { sleep 120; $PY scripts/oversize_review.py --kind large draw --aoi $AOI --labels $LABELS; } \
                      || echo 'REVIEW PAGE MISSING: large installation review package failed (non-fatal); re-run pixi run large-review draw --aoi $AOI'"

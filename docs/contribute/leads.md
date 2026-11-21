@@ -7,11 +7,13 @@ installation in OpenStreetMap, and a person has since judged the outline solar o
 country's [review pages](review.md). They are installations of 1 ha (10,000 m<sup>2</sup>)
 and up: factory and warehouse roofs, ground-mounted parks.
 
-**Every outline in it is a real installation**: someone has already looked at it on the
-imagery the model saw and on Esri's, so all that is left is to trace it. A country has a
-confirmed file once its review pages have been judged; until then its atlas offers no leads.
-The model's other outlines are not handed to mappers: drawn from 10 m pixels and unchecked,
-many of them are bright roofs, fields or shadows, so they go to the review pages first.
+**Every outline in it is a real installation**: someone has already judged it solar on the
+imagery the model saw, so all that is left is to trace it. A country has a confirmed file
+once its review pages have been judged; until then its atlas offers no leads. The model's
+other outlines are not handed to mappers: drawn from 10 m pixels and unchecked, many of them
+are bright roofs, fields or shadows, so they go to the reviews first. The large ones, from
+1 ha to 10 ha, are reviewed in JOSM much as below, from a review layer instead of this file
+([Check large installations](review.md#the-large-installation-review-review-in-josm-while-mapping)).
 
 Mapping them does two things. The next time the country's atlas is rebuilt, each
 installation you add is counted as hand-mapped solar. And the next time the country's model
@@ -63,7 +65,7 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 | `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg; (up to 30&deg;): look at the terrain as well as the outline (below) |
 | `ever_wet_frac` | share of the outline ever under water since 1984 (only in countries with the pans-and-ponds screen) |
 | `review_verdict` | `pv`: a person judged it solar |
-| `review_page` | the review page the verdict was given on: `solar_farm` (above 10 ha) or `large_installation` (1 to 10 ha) |
+| `review_page` | the review page the verdict was given on: `solar_farm` (above 10 ha) or `large_installation` (1 to 10 ha; since 20 November 2026 these are reviewed in JOSM, and only a verdict on their Sentinel-2 page lands here) |
 | `lon`, `lat` | a point inside the outline |
 
 **Steep ground.** A lead marked `steep_review` lies on ground steeper than 15&deg;. A person

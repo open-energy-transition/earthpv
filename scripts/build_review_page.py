@@ -30,6 +30,40 @@ PANEL = 480
 PAD_DEG = 0.001  # ~100 m around the outline for the editor links
 KEY = "blind_key_DO_NOT_OPEN_BEFORE_VERDICTS.geojson"
 
+COPERNICUS = "Sentinel-2 panels: contains modified Copernicus Sentinel data"
+
+# The links under each item, [label, URL template]: {lat} {lon} {w} {s} {e} {n} {code} are
+# filled in by the page. LINKS_DEFAULT opens commercial imagery (Google, Bing, Esri) and suits
+# reviews whose verdicts never leave the project's own research. LINKS_FREE opens only free
+# data, for a page whose verdicts must rest on Sentinel-2 alone (`scripts/oversize_review.py`,
+# owner 2026-11-20): Sentinel-2 at any date in the Copernicus Browser, the OpenStreetMap map,
+# and JOSM to map what is there, whose imagery is licensed for mapping into OpenStreetMap.
+LINKS_DEFAULT = [
+    ["Google satellite", "https://www.google.com/maps/@{lat},{lon},180m/data=!3m1!1e3"],
+    ["Bing aerial", "https://www.bing.com/maps?cp={lat}~{lon}&lvl=19&style=a"],
+    ["Esri Wayback", "https://livingatlas.arcgis.com/wayback/#mapCenter={lon}%2C{lat}%2C18"],
+    ["OpenStreetMap", "https://www.openstreetmap.org/#map=19/{lat}/{lon}"],
+    ["JOSM", "http://127.0.0.1:8111/load_and_zoom?left={w}&right={e}&top={n}&bottom={s}"],
+]
+LINKS_FREE = [
+    ["Sentinel-2 in the Copernicus Browser",
+     "https://browser.dataspace.copernicus.eu/?zoom=15&lat={lat}&lng={lon}"],
+    ["OpenStreetMap", "https://www.openstreetmap.org/#map=17/{lat}/{lon}"],
+]
+
+
+def josm_link(hashtags: list[str], comment: str) -> list[str]:
+    """A [label, URL template] that loads the OpenStreetMap data around an item into a new
+    JOSM layer, ready to map in, with the changeset's comment and hashtags filled in."""
+    from urllib.parse import quote
+
+    tags = " ".join(hashtags)
+    return ["Map it in JOSM",
+            "http://127.0.0.1:8111/load_and_zoom?left={w}&right={e}&top={n}&bottom={s}"
+            "&new_layer=true&layer_name=" + quote("OSM data {code}", safe="{}")
+            + "&changeset_comment=" + quote(f"{comment} {tags}")
+            + "&changeset_hashtags=" + quote(";".join(hashtags))]
+
 
 def panels(blind: Path, n: int) -> list[Image.Image]:
     sheets = sorted(blind.glob("sheet_*.png"))
@@ -90,7 +124,8 @@ BRIGHT_ROOF = ("bright_roof", "Bright roof",
 def write_page(out: Path, name: str, items: list[dict], guide: str | None = None,
                title: str = "Blind PV review", store: str | None = None,
                export_name: str = "verdicts.csv", back: str | None = None,
-               bright_roof: bool = False) -> Path:
+               bright_roof: bool = False, credits: list[str] | None = None,
+               links: list[list[str]] | None = None) -> Path:
     """Write the review page for `items`, for any review, not only the blind folders.
 
     Each item needs `code` and `img` (a data URI, or a path relative to `out` so the images
@@ -102,7 +137,19 @@ def write_page(out: Path, name: str, items: list[dict], guide: str | None = None
     very bright roof), which only a join that maps it may be given. Progress is saved in the
     browser under `store` (default `name`), which must change whenever the same codes come
     to mean other outlines. `back` links a page of pages. (`scripts/oversize_review.py
-    package` uses this for unmapped parks, 2026-10-29.)"""
+    package` uses this for unmapped parks, 2026-10-29.)
+
+    An item may instead carry `panels`, a list of square images shown side by side, three to
+    a row, or two when there are four (`scripts/oversize_review.py`'s three Sentinel-2 panels,
+    2026-11-20). Each panel has `cap` (caption text) and `src` (an image path or URI), and may
+    carry `draw`, `[class, svg path]` pairs in a 480 x 480 frame drawn over the image:
+    `outline`, `ring` (dashed) or `corner`; key `o` hides them. `credits` adds lines to the
+    imagery credits under the panels. `links` replaces the links under each item
+    (LINKS_DEFAULT; a page whose verdicts must rest on free imagery alone passes LINKS_FREE)."""
+    import html as _html
+
+    lines = list(credits or [])
+    credit_html = " &middot; ".join(c if "&" in c else _html.escape(c) for c in lines)
     home = f'<a class="btn" href="{back}">All countries</a>' if back else ""
     verdicts = VERDICTS + ([BRIGHT_ROOF] if bright_roof else [])
     buttons = "\n".join(f'      <button data-v="{v}" title="{tip}"><kbd>{k}</kbd>{label}</button>'
@@ -116,6 +163,9 @@ def write_page(out: Path, name: str, items: list[dict], guide: str | None = None
             .replace("__BUTTONS__", buttons)
             .replace("__LABELS__", json.dumps({v: label for v, label, _ in verdicts}))
             .replace("__GUIDE__", GUIDE if guide is None else guide)
+            .replace("__CREDITS__", credit_html)
+            .replace("__LINKS__", json.dumps(LINKS_DEFAULT if links is None else links))
+            .replace("__BODYCLASS__", "panels-mode" if any("panels" in it for it in items) else "")
             .replace("__ITEMS__", json.dumps(items).replace("</", "<\\/")))
     out.write_text(page)
     return out
@@ -179,8 +229,32 @@ main { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid;
   grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
 @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-.viewer img { width: 100%; max-width: 720px; aspect-ratio: 1; display: block; margin: 0 auto;
+.viewer > img { width: 100%; max-width: 720px; aspect-ratio: 1; display: block; margin: 0 auto;
   border-radius: 6px; image-rendering: auto; background: #222; }
+.viewer > img[hidden], .panels[hidden] { display: none; }
+body.panels-mode main { max-width: 1720px; grid-template-columns: minmax(0, 1fr) 300px; }
+@media (max-width: 860px) { body.panels-mode main { grid-template-columns: 1fr; } }
+.panels { display: grid; gap: 8px; justify-content: center;
+  grid-template-columns: repeat(3, minmax(0, max(240px, calc((100vh - 300px) / 2)))); }
+.panels.four { grid-template-columns: repeat(2, minmax(0, max(240px, calc((100vh - 300px) / 2)))); }
+@media (max-width: 860px) { .panels, .panels.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.panel { margin: 0; }
+.credits { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+.credits:empty { display: none; }
+.panel .frame { position: relative; aspect-ratio: 1; background: #222; border-radius: 6px;
+  overflow: hidden; }
+.panel .frame > img, .panel .frame > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.panel svg path { fill: none; vector-effect: non-scaling-stroke; }
+.panel svg .outline { stroke: #ffd600; stroke-width: 2; }
+.panel svg .ring { stroke: #fff; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.panel svg .corner { stroke: #ffd600; stroke-width: 2.5; }
+.nolines .panel svg { display: none; }
+.panel figcaption { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.panel .fail { display: none; }
+.panel.failed .frame > img, .panel.failed .frame > svg { visibility: hidden; }
+.panel.failed .fail { position: absolute; inset: 0; display: flex;
+  flex-direction: column; justify-content: center; gap: 8px; padding: 14px; color: #ddd;
+  font-size: 13px; text-align: center; }
 .meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
   margin: 10px 0 0; color: var(--muted); font-size: 14px; }
 .meta b { color: var(--ink); font-size: 18px; }
@@ -220,7 +294,7 @@ textarea { width: 100%; margin-top: 10px; min-height: 56px; font: inherit; color
 input[type=file] { display: none; }
 </style>
 </head>
-<body>
+<body class="__BODYCLASS__">
 <header>
   <h1>__TITLE__ <span class="name">__NAME__</span></h1>
   <div class="progress"><div class="bar"><div id="bar"></div></div><span id="prog"></span></div>
@@ -232,6 +306,8 @@ input[type=file] { display: none; }
 <main>
   <section class="card viewer">
     <img id="img" alt="">
+    <div id="panels" class="panels" hidden></div>
+    <p class="credits">__CREDITS__</p>
     <div class="meta"><b id="code"></b><span id="date"></span></div>
     <div class="verdicts">
 __BUTTONS__
@@ -273,22 +349,40 @@ __GUIDE__
   function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show");
     clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1600); }
 
+  const LINKS = __LINKS__;  // [label, URL template], filled in per item
   function links(it) {
     if (it.lat === undefined) return "";
     const [w, s, e, n] = it.bbox;
-    const L = [
-      ["Google satellite", `https://www.google.com/maps/@${it.lat},${it.lon},180m/data=!3m1!1e3`],
-      ["Bing aerial", `https://www.bing.com/maps?cp=${it.lat}~${it.lon}&lvl=19&style=a`],
-      ["Esri Wayback", `https://livingatlas.arcgis.com/wayback/#mapCenter=${it.lon}%2C${it.lat}%2C18`],
-      ["OpenStreetMap", `https://www.openstreetmap.org/#map=19/${it.lat}/${it.lon}`],
-      ["JOSM", `http://127.0.0.1:8111/load_and_zoom?left=${w}&right=${e}&top=${n}&bottom=${s}`],
-    ];
-    return L.map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join("");
+    const at = {lat: it.lat, lon: it.lon, w, s, e, n, code: encodeURIComponent(it.code)};
+    return LINKS.map(([t, u]) => `<a href="${u.replace(/\{(\w+)\}/g, (m, k) => k in at ? at[k] : m)}"`
+      + ` target="_blank" rel="noopener">${t}</a>`).join("");
+  }
+
+  // Panels: images side by side, with any lines drawn over them.
+  function panelsHTML(it) {
+    return it.panels.map((p) => {
+      const lines = (p.draw || []).map(([k, d]) => `<path class="${k}" d="${d}"/>`).join("");
+      const svg = `<svg viewBox="0 0 480 480" aria-hidden="true">${lines}</svg>`;
+      return `<figure class="panel"><div class="frame"><img src="${p.src || ""}" alt="" `
+        + `onerror="this.closest('figure').classList.add('failed')">${svg}`
+        + `<span class="fail">No image</span></div><figcaption>${p.cap || ""}</figcaption></figure>`;
+    }).join("");
+  }
+  function preload(it) {
+    if (it.panels) it.panels.forEach((p) => { if (p.src) new Image().src = p.src; });
+    else new Image().src = it.img;
   }
 
   function render() {
     const it = ITEMS[cur], v = state[it.code] || {};
-    $("img").src = it.img; $("img").alt = "Panel " + it.code;
+    if (it.panels) {
+      $("img").hidden = true; $("img").removeAttribute("src");
+      $("panels").hidden = false; $("panels").innerHTML = panelsHTML(it);
+      $("panels").classList.toggle("four", it.panels.length === 4);
+    } else {
+      $("panels").hidden = true;
+      $("img").hidden = false; $("img").src = it.img; $("img").alt = "Panel " + it.code;
+    }
     $("code").textContent = `${it.code}  (${cur + 1} of ${ITEMS.length})`;
     $("date").textContent = it.date_label || ("Esri imagery " + (it.date || "unknown"));
     document.querySelectorAll(".verdicts button").forEach((b) =>
@@ -303,7 +397,7 @@ __GUIDE__
     $("counts").innerHTML = Object.entries(c).map(([k, n]) => `<span>${LABEL[k]}: <b>${n}</b></span>`).join("");
     paint();
     // The next few images, so a key press shows the next outline at once.
-    for (let k = 1; k <= 3; k++) new Image().src = ITEMS[(cur + k) % ITEMS.length].img;
+    for (let k = 1; k <= 3; k++) preload(ITEMS[(cur + k) % ITEMS.length]);
   }
 
   // Built once: a country can queue thousands of outlines.
@@ -346,11 +440,15 @@ __GUIDE__
   $("clear").onclick = () => { const s = state[ITEMS[cur].code]; if (s) { delete s.verdict; save(); render(); } };
   $("grid").addEventListener("click", (e) => { const c = e.target.closest(".chip"); if (c) go(+c.dataset.i); });
   document.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "TEXTAREA") { if (e.key === "Escape") e.target.blur(); return; }
+    if (e.target.closest && e.target.closest("textarea, input")) {
+      if (e.key === "Escape") e.target.blur();
+      return;
+    }
     if (/^[1-9]$/.test(e.key)) { if (KEYS[+e.key - 1]) judge(KEYS[+e.key - 1]); }
     else if (e.key === "ArrowLeft" || e.key === "k") go(cur - 1);
     else if (e.key === "ArrowRight" || e.key === "j") go(cur + 1);
     else if (e.key === "n") { e.preventDefault(); $("note").focus(); }
+    else if (e.key === "o") document.body.classList.toggle("nolines");
   });
 
   const q = (s) => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
