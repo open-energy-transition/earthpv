@@ -1138,7 +1138,8 @@ leads -> polygons, behind markers in `data/<aoi>_pipeline_markers/`).
 - **Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
 - Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`; stop
   the QUEUE first when removing compute markers.
-- Disk guards: `DISK_MIN_HOME_GB` (default 120, overridable by environment) and
+- Disk guards: `DISK_MIN_HOME_GB` (default 5 on `/`, the system disk, since
+  2026-11-22 (owner; was 120), overridable by environment) and
   `DISK_MIN_MORE_GB` (default 15) on `/run/media/tobi/moreaidata`, where Mexico, Chile and
   Australia (and Texas's composites) keep their data.
 - A `COUNTRIES` row's sixth field names a country whose compose must finish before this one's

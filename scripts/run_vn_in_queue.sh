@@ -60,7 +60,7 @@ MAX_UNPRODUCTIVE=8       # consecutive rounds adding < ROUND_PROGRESS_MIN before
 ROUND_PROGRESS_MIN=20    #   a shortfall (the remaining cells then have no usable scenes)
 ROUND_WAIT=3600          # pause after an unproductive round, so a provider outage can clear
 INDIA_TRAIN_DENSITY_CELLS=3000   # density cells beyond the label cells before India trains
-DISK_MIN_HOME_GB=120
+DISK_MIN_HOME_GB=5   # owner 2026-11-22: 5 GB for every country (was 120)
 DISK_MIN_AIDISC_GB=8
 COMPUTE_MAX_FAILS=3      # relaunches of a failed compute unit before waiting for a human
 
