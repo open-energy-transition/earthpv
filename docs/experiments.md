@@ -72,6 +72,9 @@ repository; nothing was deleted on failure.
 | [roofclf on French residential PV](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer) | <span class="outcome negative">rejected</span> | 0.627 AUC within size band against Pakistan's ~0.834. A 20 m<sup>2</sup> array is a fifth of a Sentinel-2 pixel. |
 | [13x the roofclf labels, from OpenPVMapper](results/france.md#was-it-just-too-few-labels-no) | <span class="outcome negative">rejected</span> | 16,435 positives against 1,231 moves AUC by -0.005. The model scores 0.683 even on its own label source. |
 | [Authoritative footprints instead of VIDA](#authoritative-footprints-the-french-cadastre-against-vida-2026-09-12) | <span class="outcome mixed">partial</span> | VIDA misses 58% of French buildings. Fixing that is worth +0.027 AUC, which is 14% of the gap to Pakistan. |
+| [OSM buildings added one by one to VIDA](#building-layers-repairing-vida-in-europe-dating-it-in-pakistan-2026-11-22) | <span class="outcome mixed">partial</span> | Rooftop-tagged OSM area on a footprint 75% to 90% (Belgium), 80% to 89% (Netherlands); Best +1.9% and +1.6%. Not in a published atlas yet. |
+| [EUBUCCO v0.2 footprints in France](#building-layers-repairing-vida-in-europe-dating-it-in-pakistan-2026-11-22) | <span class="outcome mixed">partial</span> | 94% of the cadastre's buildings; within size band 0.627 to 0.641 (cadastre 0.655). Its type, height and year add nothing. |
+| [Google Open Buildings 2.5D Temporal: height and age](#building-layers-repairing-vida-in-europe-dating-it-in-pakistan-2026-11-22) | <span class="outcome mixed">partial</span> | +0.0077 within size band on all 41 Pakistani areas (25 of 36 folds), under the one-point bar. VIDA footprints it never sees carry PV at 2.3%. |
 | [roofclf transfer to Germany](results/germany.md#does-roofclf-transfer-to-germany) | <span class="outcome mixed">partial</span> | A foreign model transfers (0.70-0.72) and it barely matters which country; in-domain German training is worth +0.08. |
 | [Pakistan's roofclf on Yemen's roofs](results/yemen.md#rooftop-pv-below-400-m2-borrowing-pakistans-classifier-2026-10-28) | <span class="outcome mixed">partial</span> | Ranks Yemen's four building boxes with PV as well as Yemen's own fit (median AUC 0.809 against 0.813; pooled at equal shares 0.818, now `roof-classifier --extra-table`), but saturates on rural stone houses, roofless shells and greenhouse tunnels: 13 of the 24 windows it scores highest showed no panel on Esri imagery, every window with panels was a town. Ranking is not Yemen's problem; the level is. It drew ten PV-rich town boxes (`calib-candidates --pv-rich`). The first two mapped, Yafi' and Qa'tabah town (2026-10-29), measured it: AUC 0.79 and 0.89 on household roofs, but scores summing to 3.6 per PV roof (170 over 47) against 1.115 in Pakistan's quadrats, about 3.2 times the PV there (high-leaning: the boxes were picked on their scores; Qa'tabah, picked on the fewest, reads 2.5). |
 | [The sub-400 m<sup>2</sup> estimator against a complete register](results/germany.md#the-sub-400-m2-estimator-against-the-register) | <span class="outcome mixed">partial</span> | Beaten by total roof area in Germany (23% vs 58% error), beats it 3.4x in Pakistan. Regime-specific, and a perfect national total hid 47% per-municipality error. |
@@ -558,6 +561,96 @@ already the unit the French quadrats use.
 
 `building_table` gained an optional `buildings` override for this; the default keeps the VIDA
 fetch, so no existing caller changed.
+
+### Building layers: repairing VIDA in Europe, dating it in Pakistan (2026-11-22)
+
+Google Open Buildings V3 does not cover Europe, so VIDA there is Microsoft's layer alone, and
+the published repair (`fill_vida_from_osm.py`) adds OSM buildings only to 0.01&deg; blocks
+holding no VIDA footprint at all. In Belgium, where OSM holds 1.68 times VIDA's buildings,
+that added 0.6%. Two building-by-building rules now sit beside it: `--rule building` keeps
+every VIDA footprint and adds each OSM building that is not the same building, `--rule
+osm-first` keeps every OSM building and adds each VIDA footprint OSM lacks. Two outlines are
+one building when their overlap covers at least 30% of either.
+
+**What the layer gets right is measurable from OSM's own tags.**
+`scripts/building_layer_attribution.py` takes the solar polygons mappers tagged
+`location=roof` or `generator:place=roof` and reports the share of their area that a layer
+puts on a footprint; ground-tagged polygons are the control.
+
+| Rooftop-tagged area on a footprint | VIDA alone | Published (block fill) | Building rule | OSM-first |
+| --- | --- | --- | --- | --- |
+| Belgium (3,811 arrays) | 75.1% | 75.5% | 90.2% | 98.1% |
+| Netherlands (3,907 arrays) | 61.8% | 80.2% | 88.8% | 99.0% |
+
+Ground-tagged area on a footprint stays at 4.0 to 4.9% (Belgium) and 0.5 to 0.7% (the
+Netherlands) under every layer. OSM-first scores high partly by construction: mappers trace
+rooftop arrays on OSM buildings.
+
+**What the atlas does with it.** Both atlases were rebuilt from `postprocess` to the page in
+a staging copy of the repository (`scripts/building_layer_stage_tree.sh`,
+`scripts/building_layer_stage_chain.sh`), everything but the building file held fixed. The run
+on the published layer reproduces all 28 headline figures of both published pages exactly.
+
+| MWp | Best | Rooftop | Ground | Buildings with PV |
+| --- | --- | --- | --- | --- |
+| Belgium, published layer | 970.8 | 533.7 | 437.1 | 2,238 |
+| Belgium, building rule | 989.4 | 581.0 | 408.4 | 2,624 |
+| Belgium, OSM-first | 1,000.5 | 609.5 | 391.0 | 3,087 |
+| Netherlands, published layer | 4,567.3 | 931.2 | 3,636.1 | 8,149 |
+| Netherlands, building rule | 4,639.3 | 1,110.6 | 3,528.7 | 9,922 |
+| Netherlands, OSM-first | 4,705.3 | 1,233.9 | 3,471.4 | 10,259 |
+
+Verified cannot move in the staging chain, which reuses the labels' stored placement.
+Re-placing the OSM solar polygons that carry no roof tag under each layer
+(`scripts/building_layer_verified_effect.py`) moves it by +3.4 and +7.7 MWp in Belgium and
++33.6 and +34.7 MWp in the Netherlands. `check-density` gives the same verdict under every
+layer. A real correction, and small against the gap to Elia and CBS, which is the sensor.
+
+**Review verdicts are keyed by row.** A new layer changes `rank_score`, which reorders the
+candidate file, and `density` refused every large-review verdict on its area check. In
+staging `scripts/building_layer_remap_reviews.py` re-pointed them by representative point and
+area (261 Belgian and 549 Dutch rows, none lost). A real layer change needs the verdicts keyed
+by outline first.
+
+**France on EUBUCCO v0.2.** EUBUCCO v0.2 (ODbL, one GeoParquet per NUTS-2 region on an
+anonymous S3 endpoint) orders its sources as JRC's DBSM R2025 does, government first (BD TOPO
+in France), then OSM, then Microsoft, and adds building type, height, floors and, for part of
+the stock, construction year. DBSM France is a 28.9 GB GeoPackage that cannot be read in part
+from the JRC server at a usable speed, so the test used EUBUCCO, rerunning the 2026-09-12
+protocol unchanged (`scripts/test_eubucco_footprints.py`):
+
+| | Buildings | PV-bearing | Median footprint | AUC | Within size band |
+| --- | --- | --- | --- | --- | --- |
+| VIDA | 44,314 | 1,231 | 163 m&sup2; | 0.7103 | 0.6274 |
+| Cadastre | 103,697 | 1,759 | 53 m&sup2; | 0.7369 | 0.6548 |
+| EUBUCCO v0.2 | 97,864 | 1,707 | 66 m&sup2; | 0.7438 | 0.6411 |
+
+Its attributes do not help: within the size band type adds +0.0041 (8 of 13 folds), height
+-0.0013 (4 of 13), construction year +0.0155 (8 of 13) and all of them +0.0117 (9 of 13,
+sign test p = 0.27). EUBUCCO's row groups are sorted by `city_id` only loosely, so a commune
+is read from its own region's file.
+
+**Pakistan on Google Open Buildings 2.5D Temporal.** Annual building presence and height,
+2016 to 2023, 4 m effective on a 0.5 m grid, CC BY 4.0 and ODbL, read per window from the
+public bucket `open-buildings-temporal-data` with no Earth Engine account
+(`scripts/gob_temporal_features.py`). The files' internal overviews carry no building signal
+(presence reads 0.20 inside and outside footprints at 2 m, against 0.72 and 0.16 at 0.5 m),
+so the full grid is read. On all 41 calibration areas, one fold per area
+(`scripts/run_gob_temporal_ablation.py`, baseline 0.8149 within the size band, the
+production fit):
+
+| Added to the 16 features | Within size band | Median fold change | Folds better | Sign test p |
+| --- | --- | --- | --- | --- |
+| Height in 2023 | 0.8214 | +0.0077 | 25 of 36 | 0.017 |
+| Age (first year seen, 2016 presence, new since 2021, height gained) | 0.8203 | +0.0041 | 24 of 36 | 0.024 |
+| Presence in 2023 | 0.8204 | +0.0048 | 26 of 36 | 0.006 |
+| All of them | 0.8223 | +0.0077 | 25 of 36 | 0.017 |
+
+Consistent, and under the one-point bar open question 22 set. It revises the [GlobalBuildingAtlas reading](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20):
+on 5 areas and 9 folds that height gave +0.0006; an openly licensed height on all 41 gives
++0.0077. The clearer finding is about VIDA itself: 29,752 of the 130,418 footprints (22.8%)
+never reach presence 0.5 in any year, and they carry PV at 2.3%, against 19.7% for buildings
+present in 2016.
 
 ### Glint tile copies and token expiry (2026-10-22)
 

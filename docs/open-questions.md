@@ -412,6 +412,15 @@ partialled out, 2026-10-21). The one untried role where its coarseness does not 
 **a plausibility flag for cells bright in VIIRS but implausibly sparse in VIDA**, i.e. where
 VIDA is missing structures, slotted into `plausibility.py` beside the existing checks.
 
+**A dated, building-scale check now exists (2026-11-22).** Google Open Buildings 2.5D
+Temporal (item 22) gives each VIDA footprint a yearly presence from 2016 to 2023. In
+Pakistan's 41 calibration areas, 29,752 of 130,418 footprints (22.8%) never reach presence 0.5
+in any year, and they carry PV at 2.3% against 19.7% for buildings present in 2016
+(`scripts/gob_temporal_features.py`, register 2026-11-22). The open step is the cell-level
+flag: the share of a cell's footprints Google never sees, beside VIIRS, in `plausibility.py`.
+It covers the Global South only; in Europe the OSM rooftop-tag score of item 28 measures what
+the layer misses instead.
+
 ### 16. The 90% interval leaves out choices of method (2026-10-28)
 
 `atlas._evidence_uncertainty` composes measured errors only (the kWp priors, segmentation's
@@ -650,10 +659,12 @@ expected effect on what is published, with the first measurement each would need
   Global South only; Pakistan, India, Yemen, Egypt, Nigeria, Namibia, Zambia, Morocco,
   Vietnam). VIDA is an undated snapshot and the unit roofclf classifies; building age and
   height are two features it does not have, and height separates sheds from houses, which
-  the fill rate already depends on. First measurement: the two features on one Pakistani
-  quadrat set, size-controlled AUC on the spatial holdout, the glint-date harness
-  (`glint_date_roofclf_feature.py`); drop it below one point. It also gives item 15 a dated
-  completeness check that VIIRS cannot.
+  the fill rate already depends on. **Measured 2026-11-22 on all 41 Pakistani areas**
+  (`scripts/run_gob_temporal_ablation.py`, register): height and age together +0.0077
+  within the size band, 25 of 36 folds better, sign test p = 0.017. Consistent, and under the
+  one-point bar set here, so not adopted as features; deploying them would also mean reading
+  the 2023 rasters for all 75.7 million Pakistani buildings. It does give item 15 its dated
+  completeness check.
 - **Sentinel-1 multi-temporal variance** (item 14): unchanged, still untested; expect a
   narrow filter, since the level test in `sar.py` was weak and chance on mountain layover.
 - **EMIT** (NASA hyperspectral on the ISS, 60 m, free, acquired over arid regions): a
@@ -881,3 +892,31 @@ or undecided:
 - **A lead found not solar in JOSM** prices nothing today and keeps its size class's share.
   Whether it should count at 0, as a Sentinel-2 verdict does, is the owner's call; the marks
   are kept in review.csv's `josm` column, so it can be decided without a second look.
+
+### 28. Building layers for the next atlases (measured 2026-11-22)
+
+Google Open Buildings V3 does not cover Europe, North America or Australia, so VIDA there is
+Microsoft's layer alone, and it misses buildings: in Belgium and the Netherlands it puts 75%
+and 62% of the area of rooftop-tagged OSM arrays on a footprint. The register entry of
+2026-11-22 measures the repairs: the building-by-building OSM fill (`fill_vida_from_osm.py
+--rule building`, 90% and 89%) and OSM-first (98% and 99%) move Best by +1.9 to +3.1% and the
+rooftop share by +9 to +33%. A survey of open layers points the Europe campaign at EUBUCCO
+v0.2 (ODbL, government footprints first, one GeoParquet per NUTS-2 region; drop the Abruzzo
+and Prague sources, which are CC BY-NC and CC BY-SA), national layers where newer (3DBAG,
+BD TOPO, BEV, Tailte Eireann, swissBUILDINGS3D), USA Structures and StatCan's ODB in North
+America, and VIDA with the building-by-building fill elsewhere.
+
+**Before any layer change: key review verdicts by outline.** Verdict CSVs name candidates by
+row, and a new layer reorders the candidate file through `rank_score`; `density` then refuses
+every verdict. Staging re-pointed them with `scripts/building_layer_remap_reviews.py`.
+
+**Open for the owner:**
+- the fill for new countries: `--rule building` everywhere, or `osm-first` where OSM comes
+  from a cadastre import;
+- `scripts/building_layer_attribution.py` as a `new_region.py check` step, choosing each
+  country's layer before compose;
+- a EUBUCCO-to-VIDA-schema adapter for the Europe campaign (reproject from EPSG:3035, build
+  the `bbox` struct, filter the two sources);
+- republishing Belgium and the Netherlands on OSM-first or EUBUCCO, after the verdict keying;
+- Germany: refit roofclf on EUBUCCO's ALKIS/LoD2 footprints and rescore the country (hours),
+  the test the 2026-09 OSM-footprint pass left confounded.
