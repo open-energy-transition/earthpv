@@ -3065,6 +3065,13 @@ INTERACTIVE = [
     # of epochs 32 and 40; beat v5 on the held-out Santa Clara County).
     # docs/results/california.md explains.
     ("results/california_pv_evidence_atlas.html", "california_pv_evidence_atlas.html"),
+    # Mexico, Chile and Australia (2026-11-22), first iterations published before their
+    # blob and large-installation reviews: segmentation-only, Mexico and Chile on their own
+    # localized ResNet-50s (v40r, v44r), Australia on the general v28 (its localized v46r
+    # lost on New South Wales). docs/results/<country>.md explains.
+    ("results/mexico_pv_evidence_atlas.html", "mexico_pv_evidence_atlas.html"),
+    ("results/chile_pv_evidence_atlas.html", "chile_pv_evidence_atlas.html"),
+    ("results/australia_pv_evidence_atlas.html", "australia_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

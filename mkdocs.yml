@@ -152,13 +152,16 @@ nav:
       - Bronze:
           - Germany: atlas-germany.md
           - France: atlas-france.md
+          - Australia: atlas-australia.md
           - Belgium: atlas-belgium.md
           - California: atlas-california.md
+          - Chile: atlas-chile.md
           - Denmark: atlas-denmark.md
           - Egypt: atlas-egypt.md
           - India: atlas-india.md
           - Italy: atlas-italy.md
           - Luxembourg: atlas-luxembourg.md
+          - Mexico: atlas-mexico.md
           - Morocco: atlas-morocco.md
           - Namibia: atlas-namibia.md
           - Netherlands: atlas-netherlands.md

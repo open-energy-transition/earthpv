@@ -23,7 +23,8 @@ tolerated. Two detectors:
   floor. It is not optional: Germany's legally complete register (MaStR) puts **65.5% of rooftop
   capacity in installations below 400 m²** (97.2% by count; quote the capacity share).
 
-Twenty-one countries plus Texas and California have a published atlas ("Country runs").
+Twenty-five countries plus Texas and California have a published atlas ("Country runs"; Sweden
+was published by a contributor and is not in its table).
 `README.md` has the narrative and headline numbers.
 
 ## Main workflow (default pipeline)
@@ -1175,6 +1176,9 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Denmark | `v37r_resnet50_denmark` ep 10 at 0.95 | 2,639.9 / 2,683.1 | localized ResNet-50 since 2026-11-19; thin Nordjylland holdout |
 | Texas | `v39r_resnet50_texas` ep 18 at 0.3 | 45,712.0 / 51,488.0 | state AOI, counties as regions; localized ResNet-50 since 2026-11-20, OSM screen still v39's |
 | California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 32,198.9 | state AOI; small-scale PV unmeasured; ResNet v38r rejected (misses large parks) |
+| Mexico | `v40r_resnet50_mexico` ep 10 at 0.3 | 12,084.9 / 12,358.4 | first iteration (2026-11-22), reviews open; thin Chihuahua holdout (21 installations) |
+| Chile | `v44r_resnet50_chile` ep 15 at 0.3 | 13,613.7 / 13,901.9 | first iteration (2026-11-22), reviews open; Verified above IRENA's 12,032 MW |
+| Australia | `v28_resnet50_south_africa` (general) at 0.2 | 16,596.1 / 16,818.4 | first iteration (2026-11-22), reviews open; local v46r lost on New South Wales (size split suspect); rooftops unmeasured |
 
 Country points still in force (write-ups in `docs/results/<country>.md`):
 - **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
@@ -1234,6 +1238,15 @@ Country points still in force (write-ups in `docs/results/<country>.md`):
   the parks above 3 km².
   Overpass refused Texas's CSP area scan; `solar_thermal_plants.py --pbf` read the Geofabrik
   extract. No Ember line (customs data are national).
+- **Mexico / Chile / Australia** (published 2026-11-22 as first iterations, before any
+  review): segmentation-only, Verified almost all OSM park outlines at the land constant.
+  Official figures are IRENA's 2025 national PV (`IRENA_NATIONAL_PENDING` in
+  `official_capacity.py`: the scope says the national figures are not typed in yet); owed
+  are SENER/CRE, CNE/CEN and the Clean Energy Regulator. Mexico's and Australia's CSP scans
+  failed on Overpass in the chain and were re-run with `solar_thermal_plants.py --pbf`
+  (Geofabrik extracts on moreaidata). Australia's holdout comparison has an implausible size
+  split (local v46r finds 99.7% of 250-500 m2 arrays, 0.3% of 500-1,000 m2), unresolved.
+  Chile's blobs sit mostly in the northern desert (salt flats, evaporation ponds).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 

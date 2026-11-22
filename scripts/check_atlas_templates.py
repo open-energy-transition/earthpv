@@ -106,6 +106,9 @@ PUBLISHED = {
     "texas_pv_evidence_atlas.html": ("texas", "Texas"),
     "california_pv_evidence_atlas.html": ("california", "California"),
     "sweden_pv_evidence_atlas.html": ("sweden", "Sweden"),
+    "mexico_pv_evidence_atlas.html": ("mexico", "Mexico"),
+    "chile_pv_evidence_atlas.html": ("chile", "Chile"),
+    "australia_pv_evidence_atlas.html": ("australia", "Australia"),
 }
 
 

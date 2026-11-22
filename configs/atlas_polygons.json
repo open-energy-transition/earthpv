@@ -1,5 +1,29 @@
 {
   "aois": {
+    "australia": {
+      "file": "australia_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/australia_pv_polygons.parquet",
+      "size_bytes": 7230420,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-22",
+      "n_model": 12868,
+      "n_model_leads": 12183,
+      "n_model_reviewed": 0,
+      "n_osm": 77765,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-11-14",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 12911,
+        "n_outside": 43,
+        "pred": "data/predictions/australia",
+        "raw_osm": [
+          "data/labels/australia_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-14",
+        "osm_solar": "data/labels/australia_national_osm_solar.parquet"
+      }
+    },
     "belgium": {
       "file": "belgium_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/belgium_pv_polygons.parquet",
@@ -46,6 +70,30 @@
         ],
         "raw_osm_as_of": "2026-11-11",
         "osm_solar": "data/labels/california_national_osm_solar.parquet"
+      }
+    },
+    "chile": {
+      "file": "chile_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/chile_pv_polygons.parquet",
+      "size_bytes": 1247918,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-21",
+      "n_model": 4454,
+      "n_model_leads": 3748,
+      "n_model_reviewed": 0,
+      "n_osm": 1250,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-11-17",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 4457,
+        "n_outside": 3,
+        "pred": "data/predictions/chile",
+        "raw_osm": [
+          "data/labels/chile_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-17",
+        "osm_solar": "data/labels/chile_national_osm_solar.parquet"
       }
     },
     "denmark": {
@@ -214,6 +262,30 @@
         ],
         "raw_osm_as_of": "2026-08-14",
         "osm_solar": "data/labels/luxembourg_national_osm_solar.parquet"
+      }
+    },
+    "mexico": {
+      "file": "mexico_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/mexico_pv_polygons.parquet",
+      "size_bytes": 2807774,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-20",
+      "n_model": 10992,
+      "n_model_leads": 10834,
+      "n_model_reviewed": 0,
+      "n_osm": 1748,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-19",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 11246,
+        "n_outside": 254,
+        "pred": "data/predictions/mexico",
+        "raw_osm": [
+          "data/labels/mexico_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-19",
+        "osm_solar": "data/labels/mexico_national_osm_solar.parquet"
       }
     },
     "morocco": {

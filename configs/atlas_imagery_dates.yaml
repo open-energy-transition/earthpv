@@ -3,6 +3,20 @@ note: Median acquisition date of the Sentinel-2 scenes behind each evidence atla
   from the STAC catalogue for a random sample of cells (scripts/imagery_median_date.py). p25/p75 bound
   the middle half.
 aois:
+  australia:
+    median: '2025-12-16'
+    p25: '2025-10-15'
+    p75: '2026-01-26'
+    first: '2025-09-01'
+    last: '2026-03-31'
+    windows:
+    - 2025-09-01:2026-03-31
+    n_cells: 1985
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1353
+    made: '2026-11-22'
   belgium:
     median: '2026-07-01'
     p25: '2026-05-28'
@@ -31,6 +45,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1374
     made: '2026-11-14'
+  chile:
+    median: '2026-01-17'
+    p25: '2025-12-23'
+    p75: '2026-02-21'
+    first: '2025-11-01'
+    last: '2026-03-30'
+    windows:
+    - 2025-11-01:2026-03-31
+    n_cells: 1590
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1214
+    made: '2026-11-21'
   denmark:
     median: '2026-07-09'
     p25: '2026-05-25'
@@ -129,6 +157,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 418
     made: '2026-11-11'
+  mexico:
+    median: '2026-02-07'
+    p25: '2025-12-10'
+    p75: '2026-03-07'
+    first: '2025-11-01'
+    last: '2026-04-30'
+    windows:
+    - 2025-11-01:2026-04-30
+    n_cells: 7008
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1362
+    made: '2026-11-20'
   morocco:
     median: '2026-07-26'
     p25: '2026-06-26'

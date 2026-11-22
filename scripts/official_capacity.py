@@ -338,10 +338,20 @@ IRENA = {
     "namibia": ("2025", 389.0, "e"), "nigeria": ("2025", 285.0, "e"),
     "vietnam": ("2025", 19252.0, "u"), "yemen": ("2025", 456.0, "u"),
     "zambia": ("2025", 328.0, "e"),
+    # First-iteration atlases (2026-11-22): the national figures exist (Australia's Clean
+    # Energy Regulator, Chile's CNE, Mexico's SENER/CRE) but are not typed in yet.
+    "australia": ("2025", 41065.0, "o"), "chile": ("2025", 12032.0, "o"),
+    "mexico": ("2025", 12912.0, "u"),
 }
+# AOIs whose own national figures exist but are not in this table yet: the scope says so
+# instead of claiming none was found.
+IRENA_NATIONAL_PENDING = {"australia", "chile", "mexico"}
 
 
-def irena(year: str, mw: float, flag: str) -> dict:
+def irena(year: str, mw: float, flag: str, national_pending: bool = False) -> dict:
+    tail = ("The country's own national figures are not on this page yet."
+            if national_pending else
+            "No national register or statistic was found for this country.")
     return {
         "id": "irena",
         "name": "IRENA",
@@ -352,7 +362,7 @@ def irena(year: str, mw: float, flag: str) -> dict:
         "as_of": f"{year}-12-31",
         "mw": mw,
         "scope": f"National on- and off-grid solar PV at the end of {year}, {IRENA_FLAG[flag]}. "
-                 "No national register or statistic was found for this country.",
+                 + tail,
     }
 
 # MaStR Land code (first two digits of the AGS) -> the atlas's Overture region name.
@@ -640,7 +650,7 @@ def main() -> int:
             entries = entries + reg if aoi in ("poland", "texas", "california") \
                 else reg + entries
         if aoi in IRENA:
-            entries.append(irena(*IRENA[aoi]))
+            entries.append(irena(*IRENA[aoi], national_pending=aoi in IRENA_NATIONAL_PENDING))
         if entries:
             out[aoi] = entries
         for e in entries:

@@ -1,5 +1,36 @@
 {
   "aois": {
+    "australia": {
+      "file": "australia_pv_new_leads.geojson",
+      "n": 10446,
+      "size_bytes": 9258471,
+      "osm_as_of": "2026-11-14",
+      "min_distance_m": 100,
+      "made": "2026-11-22",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 25,
+        "review": 33,
+        "no_dem": 10
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 1631
+      },
+      "blobs": {
+        "file": "australia_pv_blob_leads.geojson",
+        "n": 81,
+        "size_bytes": 476328,
+        "min_area_m2": 100000.0
+      },
+      "judged_not_pv": {
+        "leads": 0,
+        "blobs": 0
+      }
+    },
     "belgium": {
       "file": "belgium_pv_new_leads.geojson",
       "n": 722,
@@ -80,6 +111,37 @@
       "judged_not_pv": {
         "leads": 325,
         "blobs": 54
+      }
+    },
+    "chile": {
+      "file": "chile_pv_new_leads.geojson",
+      "n": 2426,
+      "size_bytes": 2684914,
+      "osm_as_of": "2026-11-17",
+      "min_distance_m": 100,
+      "made": "2026-11-21",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 300,
+        "review": 226,
+        "no_dem": 6
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 785
+      },
+      "blobs": {
+        "file": "chile_pv_blob_leads.geojson",
+        "n": 237,
+        "size_bytes": 2052966,
+        "min_area_m2": 100000.0
+      },
+      "judged_not_pv": {
+        "leads": 0,
+        "blobs": 0
       }
     },
     "denmark": {
@@ -324,6 +386,37 @@
         "n": 1,
         "size_bytes": 3981,
         "min_area_m2": 100000.0
+      }
+    },
+    "mexico": {
+      "file": "mexico_pv_new_leads.geojson",
+      "n": 7674,
+      "size_bytes": 8111922,
+      "osm_as_of": "2026-10-19",
+      "min_distance_m": 100,
+      "made": "2026-11-20",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 477,
+        "review": 206,
+        "no_dem": 10
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 2021
+      },
+      "blobs": {
+        "file": "mexico_pv_blob_leads.geojson",
+        "n": 662,
+        "size_bytes": 4710364,
+        "min_area_m2": 100000.0
+      },
+      "judged_not_pv": {
+        "leads": 0,
+        "blobs": 0
       }
     },
     "morocco": {

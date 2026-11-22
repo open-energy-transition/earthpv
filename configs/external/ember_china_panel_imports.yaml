@@ -6,11 +6,23 @@ retrieved: '2026-10-19'
 method: Sum of Ember's monthly panel capacity (MW, export value / average module price) to each country
   from the first month of the record to the end of the atlas's imagery window.
 aois:
+  australia:
+    ember_area: Australia
+    from: 2017-01
+    to: 2026-03
+    mwp: 46927.9
+    ceiling: true
   belgium:
     ember_area: Belgium
     from: 2017-01
     to: 2026-08
     mwp: 25440.0
+    ceiling: true
+  chile:
+    ember_area: Chile
+    from: 2017-01
+    to: 2026-03
+    mwp: 18373.3
     ceiling: true
   denmark:
     ember_area: Denmark
@@ -67,6 +79,12 @@ aois:
     ceiling: false
     why_not: 'Luxembourg buys most of its panels through its neighbours: its installed fleet at the end
       of 2025 was nearly five times the panels it imported directly from China since 2017'
+  mexico:
+    ember_area: Mexico
+    from: 2017-01
+    to: 2026-04
+    mwp: 21633.4
+    ceiling: true
   morocco:
     ember_area: Morocco
     from: 2017-01

@@ -1,0 +1,79 @@
+# Australia's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Australia, national: the six states, the Northern Territory and the Australian Capital
+# Territory, with Tasmania, the Torres Strait islands and Lord Howe Island; the external
+# territories (Norfolk, Christmas and Cocos Islands) and Macquarie Island are left out.
+# Same starting condition as Chile -- no calibration quadrats, no record-level register
+# used -- so the builder's default no-ground-truth text stands. The segmentation is localized
+# on Australia's own OpenStreetMap labels and ships only if it beats the general model on a
+# held-out region; it lost on New South Wales, so the general model (v28) ships
+# (results/australia_checkpoint_decision.json).
+#
+# Published 2026-11-22 as a first iteration: the blob and large-installation reviews are
+# still open. Numbers belong in docs/results/australia.md; nothing here quotes a figure a
+# rebuild could change.
+
+title: Australia
+
+# The map opens on the mainland and Tasmania: framing Lord Howe Island, 600 km off the coast,
+# too would add a strip of empty ocean on the east. The island stays on the map and in every
+# total, a pan away. Check against the page's own cells before publishing.
+map_view: [112.9, -43.8, 153.7, -9.1]
+
+cities:
+  - [Sydney, 151.209, -33.868]
+  - [Melbourne, 144.963, -37.814]
+  - [Brisbane, 153.026, -27.470]
+  - [Perth, 115.861, -31.952]
+  - [Adelaide, 138.601, -34.929]
+  - [Gold Coast, 153.400, -28.017]
+  - [Canberra, 149.130, -35.281]
+  - [Newcastle, 151.780, -32.927]
+  - [Wollongong, 150.893, -34.425]
+  - [Hobart, 147.327, -42.882]
+  - [Geelong, 144.360, -38.149]
+  - [Townsville, 146.817, -19.259]
+  - [Cairns, 145.771, -16.919]
+  - [Darwin, 130.842, -12.463]
+  - [Toowoomba, 151.954, -27.561]
+  - [Ballarat, 143.850, -37.562]
+  - [Bendigo, 144.279, -36.757]
+  - [Launceston, 147.138, -41.434]
+  - [Mackay, 149.186, -21.141]
+  - [Alice Springs, 133.881, -23.698]
+
+confidence:
+  caveats:
+    - >-
+      <b>This page misses most of Australia's solar.</b> Most of Australia's solar capacity
+      sits on the roofs of homes and businesses, in systems far smaller than the roughly
+      400 m&sup2; the model can see. Everything on the map is either hand-mapped in
+      OpenStreetMap or an array the segmentation model outlined directly, so Best counts the
+      parks and the largest roofs. The small rooftop arrays mappers have drawn in
+      OpenStreetMap do count, but they are a small share of the whole, and no area has been
+      mapped panel by panel to calibrate a rooftop classifier against.
+    - >-
+      <b>This page runs on the general model.</b> A model trained on Australia's own
+      OpenStreetMap labels found far fewer of the held-out installations in New South Wales
+      than the general model did, so the general model draws the outlines here.
+    - >-
+      <b>Most of the parks are mapped outlines, priced by area.</b> OpenStreetMap mappers
+      have outlined most of Australia's solar farms as whole sites. A site's capacity is its
+      area times a fixed density of panels per square metre of site, measured on parks
+      elsewhere, so a single farm can read high or low.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar, and
+      Australia has dozens of them waiting, as well as hundreds of large model outlines below
+      that size. None has been checked yet.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A
+      farm built on empty land that nobody has mapped yet falls outside both rules and is not
+      on this page. Cells that were not imaged are hatched on the map.
+    - >-
+      <b>The plausibility check cannot vouch for the state figures here.</b> It compares
+      each state's ground-mounted capacity with its rooftop capacity, and most states fail
+      it. That is expected where rooftop systems are mostly too small for the model to see,
+      since the comparison then has little to divide by. It also means the check says little
+      either way about false detections on open ground.

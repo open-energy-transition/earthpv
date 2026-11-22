@@ -13,13 +13,16 @@ hide:
   <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or not yet enough leads mapped in OpenStreetMap to localize the model">Bronze</span>
   <a href="../atlas-germany/">Germany</a>
   <a href="../atlas-france/">France</a>
+  <a href="../atlas-australia/">Australia</a>
   <a href="../atlas-belgium/">Belgium</a>
   <a href="../atlas-california/">California</a>
+  <a href="../atlas-chile/">Chile</a>
   <a href="../atlas-denmark/">Denmark</a>
   <a href="../atlas-egypt/">Egypt</a>
   <a href="../atlas-india/">India</a>
   <a href="../atlas-italy/">Italy</a>
   <a href="../atlas-luxembourg/">Luxembourg</a>
+  <a href="../atlas-mexico/">Mexico</a>
   <a href="../atlas-morocco/">Morocco</a>
   <a href="../atlas-namibia/">Namibia</a>
   <a href="../atlas-netherlands/">Netherlands</a>
