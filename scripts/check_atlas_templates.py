@@ -38,6 +38,8 @@ REQUIRED = {
         ("farm-dot", "the farm calibration area's own (green) marker, apart from building areas"),
         ('id="references"', "the comparison with official and published figures and Ember imports"),
         ("__QUALITY_HTML__", "the quality checklist: what has been checked and what is open"),
+        ("SHOW_CAP_UNC", "the switch that keeps the Capacity and Uncertainty pair off the page "
+                         "until the owner signs it off (check_cap_unc_switch)"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__VALIDATION_BADGE__", "the calibration score stamp"),
@@ -161,6 +163,34 @@ def check_published_atlases(problems: list[str]) -> None:
                                 f"(set `composition_page` in configs/atlas/{aoi}.yaml)")
 
 
+CAP_UNC = re.compile(r"const SHOW_CAP_UNC = (true|false);")
+
+
+def check_cap_unc_switch(problems: list[str]) -> None:
+    """Every published evidence atlas shows Capacity and Uncertainty exactly when the template does.
+
+    The owner took the pair off the pages on 2026-11-25 until it is reworked. A page built
+    from a template older than the switch (a checkout behind origin, a sync source made before
+    it) draws the pair unconditionally, so it is held here to the template's value, and the
+    fix is `scripts/retemplate_atlas.py` on that page.
+    """
+    m = CAP_UNC.search((TPL / "pv_evidence_atlas.html").read_text())
+    if not m:
+        problems.append("pv_evidence_atlas.html: no `const SHOW_CAP_UNC = true|false;` line")
+        return
+    want = m.group(1)
+    for path in sorted((ROOT / "docs" / "assets" / "interactive").glob("*evidence_atlas.html")):
+        html = path.read_text()
+        got = CAP_UNC.search(html)
+        if got is None or 'id="capUnc"' not in html:
+            problems.append(f"{path.name}: built from a template without the Capacity and "
+                            f"Uncertainty switch, so it shows both charts; re-template it "
+                            f"(scripts/retemplate_atlas.py)")
+        elif got.group(1) != want:
+            problems.append(f"{path.name}: SHOW_CAP_UNC is {got.group(1)}, the template's is "
+                            f"{want}; re-template it (scripts/retemplate_atlas.py)")
+
+
 def check_atlas_configs(problems: list[str]) -> None:
     """Every configs/atlas/*.yaml parses, and none of its prose was mangled by wrapping.
 
@@ -258,6 +288,7 @@ def main() -> int:
 
     check_atlas_configs(problems)
     check_published_atlases(problems)
+    check_cap_unc_switch(problems)
     check_calibration_areas(problems)
 
     if problems:

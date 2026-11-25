@@ -62,7 +62,8 @@ in the province figures, and they have:
 - a tile, *Solar thermal power (CSP), OpenStreetMap, MW*, where the country has any, so the
   tiles still add up to Best;
 - a map quantity of their own in *Show*;
-- a row in the composition bar and in the uncertainty plot;
+- a row in the composition bar and in the uncertainty plot, both off the pages until they
+  are reworked;
 - a step in *How the estimate is built*.
 
 A tagged plant is its nameplate and carries no error of its own. Plants priced from site area

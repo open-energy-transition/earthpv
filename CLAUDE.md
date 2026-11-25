@@ -660,7 +660,11 @@ Page rules worth knowing before touching the template:
   Capacity and Uncertainty pair (owner, 2026-11-22: every part of Best as its own bar on one
   MWp scale under method headings, and each part's 90% range as % below and above its own
   figure, both in the references chart's idiom: name above the bar, value at its end, no text
-  inside a coloured bar, no log axis); "How the estimate is built" (`renderMethod()`
+  inside a coloured bar, no log axis). **The pair is off every page** (owner, 2026-11-25: "we
+  have to work on this further before publishing"): `#capUnc` starts `hidden` and is drawn only
+  when `SHOW_CAP_UNC` is true in the template, and `check_atlas_templates.py` fails any published
+  atlas whose switch differs from the template's or that predates it (re-template it). Turn it on
+  only on the owner's word. "How the estimate is built" (`renderMethod()`
   from the page's own components); "Against official and published figures" (national and
   per-province bars against `configs/external/official_capacity.yaml`, written by
   `scripts/official_capacity.py`, and the Ember import ceiling; drawn side by side, never

@@ -119,6 +119,7 @@
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
     gap: 44px 22px; align-items: start; margin-top: 44px; }
   .pair > .sec { margin-top: 0; }
+  .pair[hidden] { display: none; }
   /* The national comparison beside the provincial one, the download files side by side, and
      the three background panels in columns; a hidden card leaves the row to the others. */
   .ref-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
@@ -936,7 +937,12 @@
     </div>
   </section>
 
-  <div class="pair">
+  <!-- Capacity and Uncertainty are off the page until the owner signs them off (2026-11-25:
+       "We have to work on this further before publishing"). The pair starts hidden and is
+       shown only when SHOW_CAP_UNC is true in the script; check_atlas_templates.py holds
+       every published atlas to the template's value, so a page built from an older template
+       cannot show them. -->
+  <div class="pair" id="capUnc" hidden>
   <section class="sec" id="composition">
     <div class="sec-head">
       <div>
@@ -1386,6 +1392,10 @@ out geom;</div>
     catch (e) { return {}; }
   })();
   const ROOF_AREA = SMALL_ROOF.method === "roof_area";
+  // The Capacity and Uncertainty pair (#capUnc): hidden until the owner signs the two charts
+  // off (2026-11-25). Nothing is drawn, registered for download or written into it while
+  // this is false. check_atlas_templates.py reads this line.
+  const SHOW_CAP_UNC = false;
   const roofAreaBand = () => `${fmt(SMALL_ROOF.roof_m2[0])} to ${fmt(SMALL_ROOF.roof_m2[1])} m²`;
   // Whether roofclf replaces segmentation's rooftop figure for roofs of 400 m2 and more.
   const HAS_GE400 = ((((T.uncertainty || {}).components || {}).ge400_roof || {}).mwp || 0) > 0;
@@ -4848,7 +4858,8 @@ out geom;</div>
   }
 
   const hasComposition = !!(T.uncertainty && T.uncertainty.components);
-  if (hasComposition) {
+  if (SHOW_CAP_UNC && hasComposition) {
+    document.getElementById("capUnc").hidden = false;
     renderCompositionChrome();
     registerPlot("composition", "compMount", compositionSvg, {
       title: () => `${AOI}: what the Best estimate is made of`,
@@ -4863,9 +4874,6 @@ out geom;</div>
         + `Parts sharing a source of error were drawn together, so their ranges do not add up to the total's.`,
       csv: uncCSV,
     });
-  } else {
-    document.getElementById("composition").style.display = "none";
-    document.getElementById("uncertainty").style.display = "none";
   }
 
   // ── against official and published figures ─────────────────────────────────────
