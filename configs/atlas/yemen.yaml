@@ -11,16 +11,24 @@
 
 title: Yemen
 
-# Al Wehdah: the first start-here box (calib-candidates --priority), mapped panel by panel
-# and declared Rule-1 complete by the owner 2026-10-23 against Esri imagery of 2025-12-29.
-# Registered, not yet fitted: Yemen has no roofclf half until a refit uses it, hence
-# `used: false` (drawn on the map; the confidence text does not claim it as ground truth).
+# Building boxes (2026-10-23/24): Al Wehdah and Sayun (start-here boxes) and seven sampled
+# boxes, all declared Rule-1 complete by the owner. roofclf was fitted on them 2026-10-25
+# (data/roofclf_yemen) and left off the page by the owner's decision: median fold AUC 0.71,
+# Huth s1 below chance, and only two boxes pass the precision gate its capacity needs.
+# Hence `used: false` (drawn on the map; the confidence text does not claim them).
 #
-# Farm areas (2026-10-24): what `groundclf` calibrates farm ground PV on. 'Amran is the
-# owner's test ground, traced panel by panel. The six Tihama areas are the owner's region
-# near Zabid (data/labels/Yemen-mixed-labels.geojson), every installation checked by the
-# owner, cut to where Esri imagery is from 2024-10-01 on and along the 0.1-degree grid; its
-# 2023 UNGSC rectangles count as site outlines at the land constant (owner decision).
+# Farm areas: what `groundclf` calibrates farm ground PV on. 'Amran is the owner's test
+# ground, traced panel by panel. The six Tihama areas are the owner's region near Zabid
+# (data/labels/Yemen-mixed-labels.geojson), every installation checked by the owner, cut to
+# where Esri imagery is from 2024-10-01 on and along the 0.1-degree grid; its 2023 UNGSC
+# rectangles count as site outlines at the land constant (owner decision). These seven are
+# the published farm figure's areas (data/predictions_v25/yemen/groundclf_capacity/
+# summary.json: `n_calibration_areas` 7, 34 cells, no slope veto). The seven 3 km boxes are
+# sampled farm candidates (2026-10-24/25), mapped and declared Rule-1; the fourteen-area
+# refits of 2026-10-25 that use them (with the 12-degree slope veto) are unpublished
+# (docs/results/yemen.md), so they stay `used: false` until a refit is published. Each
+# area's boundary carries its landscape as `region`: Tihama (the plain) or Highlands; Lawdar
+# stands alone and would price nothing (one array, no detection).
 calibration_boxes:
   - {name: "Al Wehdah, Sana'a", stem: al_wehdah_priority_calib_1km, status: rule1, used: false}
   - {name: "Bani Al Harith, Sana'a", stem: bani_al_harith_s8_calib_2km, status: rule1, used: false}
@@ -61,7 +69,7 @@ calibration_boxes:
 # they calibrate farm ground PV only, and household rooftops below 400 m2 are still unmeasured.
 validation:
   score: silver
-  note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2; yet."
+  note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2;."
 
 # No star (owner, 2026-10-31): the candidates keep their mapping order, but none is singled
 # out. Ghayl Bawazir, the last star, was mapped with no PV; by the default order the star
@@ -86,18 +94,22 @@ confidence:
     'Amran, traced panel by panel, and on six areas of a Tihama region near Zabid where
     every installation was checked by hand, about 460 km&sup2; in all. Most of Tihama's
     installations were mapped in 2023 as rectangles around the whole site rather than the
-    panels; those count at the open-ground rate, not as panel area. The areas lie in two
-    regions, so the range measured over them says how much the result moves between farms
-    in those two landscapes, not across Yemen, and the estimate is only applied to map
-    cells whose share of cropland, density of buildings and elevation resemble them
-    (lowland plain for Tihama, highland for 'Amran). A further area,
-    Al Wehdah in Sana'a, is mapped panel by panel for a rooftop classifier that has not
-    been fitted yet; no figure uses it.</p>
+    panels; those count at the open-ground rate, not as panel area. The estimate is only
+    applied to map cells whose share of cropland, density of buildings and elevation
+    resemble these areas (lowland plain for Tihama, highland for 'Amran). In Tihama its
+    range comes from re-drawing the six areas there, so it says how much the result moves
+    between farms of that plain, not across Yemen; 'Amran, a single area, carries a stated
+    factor of two either way. Seven more farm areas, 3 km boxes drawn at random from
+    Yemen's farmland, have been mapped since; the figure does not use them yet. Twelve
+    further areas were mapped house by house for a rooftop classifier, which does not yet
+    rank Yemen's roofs well enough to publish; no figure uses them.</p>
   caveats:
     - >-
-      <b>Small household systems on roofs are not on this page yet.</b> One area of
-      Yemen, Al Wehdah in Sana'a, has been mapped panel by panel, but a per-building rooftop
-      classifier has not yet been fitted to it. Rooftop solar here is either hand-mapped in
+      <b>Small household systems on roofs are not on this page.</b> Twelve areas of Yemen
+      have been mapped house by house. A per-building rooftop classifier fitted to the first
+      nine ranks Yemen's roofs too unreliably to publish: in one of the four of them with
+      panels it does worse than chance, and its capacity scaling would rest on two areas.
+      Rooftop solar here is either hand-mapped in
       OpenStreetMap or an array the segmentation model outlined directly, which in practice
       means installations of roughly 400 m&sup2; and up. Small solar-irrigation arrays beside
       fields are estimated, but only in farm cells that resemble the mapped farm areas.

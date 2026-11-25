@@ -595,8 +595,14 @@ prices 2,937 of 2,957 in-domain cells from 9 quadrats.
 `templates/pv_evidence_atlas.html` is shared by every country; everything country-specific lives
 in `configs/atlas/<aoi>.yaml`, never in the builder. `atlas_config.load(aoi)` supplies `title`,
 `cities`, `calibration_boxes`, `composition_page`, `layers`, `validation`, `map_view`,
-`start_here` and three optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A
-missing file is normal; a malformed one is an error, including an unknown key.
+`start_here`, `small_rooftop` and three optional confidence blocks (`ground_truth`, `caveats`,
+`corroboration`). A missing file is normal; a malformed one is an error, including an unknown key.
+**`small_rooftop` says how the rooftop estimate below 400 m² is made**: roofclf when absent, or
+`method: roof_area` with `roof_m2`, `kwp_per_m2` and `register` (Germany). The page gets it as
+`__SMALL_ROOF_JSON__` (`atlas.small_rooftop_json`) and the charts, method text, map layers, KPI
+tile, footer, CSVs and `_composition_note` name the method from it, so a roof-area estimate is
+never called roofclf. No page names the segmentation model (TerraMind or ResNet-50 checkpoints;
+the page data records neither).
 `_confidence_html` gates every claim on the thing that makes it true and derives its counts;
 `_composition_note` derives "which method supplies most of Best" from the page's own components.
 `_load_calib_boxes` looks in `data/labels/<aoi>/` before `data/labels/`.
@@ -650,8 +656,11 @@ Page rules worth knowing before touching the template:
 - **Tiles and sections**: the generation tile (`totals.generation`, `atlas.generation_totals`:
   Best times PVGIS yield from a cached probe grid `data/irradiance_probes/<aoi>.csv`, fetched by
   `earthpv atlas` unless `--no-fetch-irradiance`; leans high, carries no yield uncertainty;
-  **south of the equator the panel azimuth is 0**); the province chart (top 7, `PROV_TOP`); a
-  forest plot of each Best component's 90% interval; "How the estimate is built" (`renderMethod()`
+  **south of the equator the panel azimuth is 0**); the province chart (top 7, `PROV_TOP`); the
+  Capacity and Uncertainty pair (owner, 2026-11-22: every part of Best as its own bar on one
+  MWp scale under method headings, and each part's 90% range as % below and above its own
+  figure, both in the references chart's idiom: name above the bar, value at its end, no text
+  inside a coloured bar, no log axis); "How the estimate is built" (`renderMethod()`
   from the page's own components); "Against official and published figures" (national and
   per-province bars against `configs/external/official_capacity.yaml`, written by
   `scripts/official_capacity.py`, and the Ember import ceiling; drawn side by side, never
@@ -731,12 +740,17 @@ Page rules worth knowing before touching the template:
 **`scripts/retemplate_atlas.py` moves published pages onto a new template without rebuilding
 them**: it recovers each placeholder's value by aligning the page with the template it was built
 from (`--old-template <git rev>`, default HEAD), proves the split by substituting back, then
-fills the current template (only `__LAYERS_JSON__` and `__AOI_KEY__` are computed fresh). **After
+fills the current template (only `__LAYERS_JSON__`, `__SMALL_ROOF_JSON__` and `__AOI_KEY__` are
+computed fresh). **After
 a template commit, pass the revision the pages were last built from**, not HEAD (a page
 restored from before 2026-11-13 was built on b1d03e0 plus ad064f7's template diff). `--new-template`
 fills a template other than the working tree's; `--refresh-prose REV` rewrites the confidence and
 composition prose from each page's data block where `atlas.py` at REV reproduces the existing
-prose. Single-purpose patchers (`scripts/patch_atlas_*.py`: leads, polygons, sizes, references,
+prose; `--old-config DIR` checks a page against the country config it was built from when that
+config has changed since. **It recomputes the quality checklist from the tree it runs in**: in a
+clean worktree the records under `data/` and untracked `results/` are missing and checks fall
+to "Not yet", so link `data`, copy the records, or put each page's published `#quality` section
+back for a template-only change. Single-purpose patchers (`scripts/patch_atlas_*.py`: leads, polygons, sizes, references,
 generation, coverage, view, pose, potential, drop_sppi) change one section of a published page
 without a rebuild.
 
@@ -1019,8 +1033,10 @@ earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
 - **Overpass is a cached dependency**: area labels in `data/groundclf/<aoi>/areas/`, paved roads
   per 1° chunk in `data/roads/<aoi>/`; national scoring never calls it. A chunk that cannot be
   fetched leaves its blobs `road_checked=False`, reported in the summary.
-- **Only Yemen has a farm figure** (seven areas, 169.1 MWp in 34 cells; the rest of Tihama is a
-  training-only weak region, `data/labels/yemen/tihama_stale_imagery_region.geojson`).
+- **Only Yemen has a farm figure** (seven areas, 171.0 MWp in 34 cells, no slope veto; the rest
+  of Tihama is a training-only weak region, `data/labels/yemen/tihama_stale_imagery_region.geojson`).
+  The seven sampled 3 km farm boxes are mapped but `used: false`: the fourteen-area refits of
+  2026-10-25 that use them, with the slope veto, are unpublished (docs/results/yemen.md).
   Pakistan's farm fit (object precision 2-5%, ~0 recall on Jhang f5 and Swabi) is not scored,
   so Pakistan's farm ground PV stays "not measured". Farm candidates exist for Yemen, Egypt,
   Morocco, India, Pakistan and South Africa.
@@ -1073,7 +1089,8 @@ German OSM (~3.6% of registered rooftop units) cannot serve as a completeness re
   production fit `data/roofclf_germany_prod/`). **But the published half is
   `scripts/build_germany_sub400_atlas_inputs.py --method size_band --kwp-per-m2 0.03493
   --min-roof-m2 200 --max-roof-m2 400`** (roof area at a register-fitted constant, no classifier;
-  `scripts/germany_sub400_topup.sh`), not the builder's roofclf default. The component must be
+  `scripts/germany_sub400_topup.sh`), not the builder's roofclf default; `small_rooftop:
+  {method: roof_area}` in its atlas config makes the page say so. The component must be
   **INCREMENTAL** (sub-400 roofs only, deduped against OSM and segmentation) and
   **pre-aggregated to one row per cell** (25M geometries OOM `atlas._join_buildings_to_grid_cells`).
   Where PV is near-ubiquitous capacity is close to proportional to roof area, so in Germany the

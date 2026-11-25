@@ -710,6 +710,22 @@ def download_section_html(aoi: str, parquet_name: str = "") -> str:
 MAX_EMBEDDED_LAYER_BYTES = 5_000_000
 
 
+def small_rooftop_json(aoi: str) -> str:
+    """How `aoi`'s rooftop estimate below 400 m2 is made, as the page's `pv-smallroof` block.
+
+    From `small_rooftop` in configs/atlas/<aoi>.yaml (roofclf when absent), so the page names
+    the method it shows: Germany's half is roof area priced against its register, not
+    roofclf. Shared by `build_evidence_atlas` and `scripts/retemplate_atlas.py`.
+    """
+    cfg = atlas_config.load(aoi)
+    out = {"method": cfg.small_rooftop_method}
+    if cfg.small_rooftop_method == "roof_area":
+        out.update(roof_m2=list(cfg.small_rooftop_roof_m2),
+                   kwp_per_m2=cfg.small_rooftop_kwp_per_m2,
+                   register=cfg.small_rooftop_register)
+    return json.dumps(out).replace("</", "<\\/")
+
+
 def map_layers_json(aoi: str) -> str:
     """The `layers:` of `configs/atlas/<aoi>.yaml` as the page's `pv-layers` JSON block.
 
@@ -2140,7 +2156,7 @@ def _assert_no_placeholders(html: str, template: str) -> str:
 
 def _composition_note(cfg, components: dict, best_floor_offset: float,
                       total_best: float) -> str:
-    """The sentence under the composition bar, derived from the bar's own numbers.
+    """The sentence that opens the capacity chart, derived from the chart's own numbers.
 
     It used to be typed into the template: "roofclf alone ... supplies most of Best by
     itself; direct OSM mapping and segmentation split roughly the rest", followed by a
@@ -2149,22 +2165,31 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
     in the page for the chart -- and it cannot go stale the way a typed claim about which
     method dominates does.
 
-    The grouping mirrors `compRows()` in the template exactly, so the sentence and the bar
-    it sits under can never disagree about what a method contributed.
+    The grouping mirrors `compRows()` in the template exactly, so the sentence and the chart
+    it introduces can never disagree about what a method contributed.
     """
     def total(*keys):
         return sum(float((components.get(k) or {}).get("mwp", 0.0)) for k in keys)
 
+    # (name, MWp, plural). No model name for the segmentation: published atlases run a
+    # TerraMind or a ResNet-50 checkpoint, and the page records neither. Where the config
+    # says the rooftop half below 400 m2 is roof area priced against a register (Germany),
+    # it is not called roofclf: no classifier is involved.
+    small_roof = (
+        f"roof area priced against {cfg.small_rooftop_register} (rooftop PV below "
+        "400 m&sup2;, no classifier)" if cfg.small_rooftop_method == "roof_area" else
+        "roofclf's building-by-building estimate (rooftops of every size, in cells inside "
+        "its calibrated density range)")
     methods = [
-        ("roofclf's building-by-building estimate (rooftops of every size, in cells inside "
-         "its calibrated density range)", total("ge400_roof", "small_central")),
+        (small_roof, total("ge400_roof", "small_central"), False),
         ("installations mapped in OpenStreetMap"
          + (" (solar thermal power plants among them)" if total("osm_unmatched_csp") > 0 else ""),
          total("osm_unmatched_roof", "osm_unmatched_ground", "osm_unmatched_csp")
-         + float(best_floor_offset or 0.0)),
-        ("TerraMind segmentation of large arrays", total("seg_roof_outdomain", "seg_ground")),
+         + float(best_floor_offset or 0.0), True),
+        ("large arrays outlined from Sentinel-2", total("seg_roof_outdomain", "seg_ground"),
+         True),
         ("the farm ground-PV detector (arrays beside fields, below 400 m&sup2;)",
-         total("small_ground")),
+         total("small_ground"), False),
     ]
     methods = sorted([m for m in methods if m[1] > 0], key=lambda m: -m[1])
     link = ("" if not cfg.composition_page else
@@ -2172,24 +2197,27 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
             f'<a href="{cfg.composition_page}" target="_blank" rel="noopener">capacity '
             "composition</a>.")
     if not methods or total_best <= 0:
-        return ("The methods behind this page's Best estimate are broken out in the bar "
-                "above." + link)
+        return ("The methods behind this page's Best estimate are broken out in the chart "
+                "below." + link)
 
     def pct(mwp):
         return f"{100.0 * mwp / total_best:.0f}%"
 
     head, rest = methods[0], methods[1:]
+    verb = "supply" if head[2] else "supplies"
     if not rest:
-        sentence = f"{head[0]} supplies all of Best."
+        sentence = f"{head[0]} {verb} all of Best."
     elif len(rest) == 1:
-        sentence = (f"{head[0]} supplies {pct(head[1])} of Best; "
+        sentence = (f"{head[0]} {verb} {pct(head[1])} of Best; "
                     f"{rest[0][0]} the remaining {pct(rest[0][1])}.")
     else:
-        tail = [f"{name} ({pct(mwp)})" for name, mwp in rest]
-        sentence = (f"{head[0]} supplies {pct(head[1])} of Best; "
+        tail = [f"{name} ({pct(mwp)})" for name, mwp, _ in rest]
+        sentence = (f"{head[0]} {verb} {pct(head[1])} of Best; "
                     f"{', '.join(tail[:-1])} and {tail[-1]} split the rest.")
-    # Deliberately NOT sentence-cased: the leading word is often `roofclf`, a module
-    # name that is lowercase everywhere else on the page and in the codebase.
+    # Sentence case, except where it opens with `roofclf`, a module name that is lowercase
+    # everywhere else on the page and in the codebase.
+    if not sentence.startswith("roofclf"):
+        sentence = sentence[0].upper() + sentence[1:]
     return sentence + link
 
 
@@ -3334,6 +3362,7 @@ def build_evidence_atlas(
         "__AOI_KEY__": aoi,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
         "__LAYERS_JSON__": map_layers_json(aoi),
+        "__SMALL_ROOF_JSON__": small_rooftop_json(aoi),
         "__COMPOSITION_NOTE__": _composition_note(
             atlas_config.load(aoi), uncertainty["components"],
             uncertainty.get("best_floor_offset_mwp", 0.0), total_best,

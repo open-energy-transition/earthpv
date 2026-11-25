@@ -14,7 +14,8 @@ or a file), checked by substituting it straight back and comparing the result to
 and then substituted into the current template. The data block, the badge, the prose and
 the download section move across byte for byte, so **no figure can change**. Placeholders
 the old template did not have are computed fresh from configuration only
-(`__LAYERS_JSON__`, from `configs/atlas/<aoi>.yaml`; `__AOI_KEY__`, the AOI itself), never
+(`__LAYERS_JSON__` and `__SMALL_ROOF_JSON__`, from `configs/atlas/<aoi>.yaml`; `__AOI_KEY__`,
+the AOI itself), never
 from pipeline output. The quality checklist (`__QUALITY_HTML__`) is the exception: it says
 what has been checked so far, which changes without a rebuild (a review sitting, a
 declaration), so `quality_html` recomputes it on every pass from the page's own data block,
@@ -39,7 +40,9 @@ own numbers, `__CONFIDENCE_HTML__` and `__COMPOSITION_NOTE__`, with the current
 page's data block and `configs/atlas/<aoi>.yaml`, and are trusted only if `atlas.py` at REV
 (the builder the pages were made with) turns them into exactly the prose the page carries; a
 page that fails that check keeps its prose and is reported. The figures are rounded to 0.1 in
-the data block, so a value ending in .5 is tried just below and just above it.
+the data block, so a value ending in .5 is tried just below and just above it. Where a
+country's config changed after its page was built, `--old-config DIR` names the config it was
+built from: the check reads that one, the new prose the current one.
 """
 
 from __future__ import annotations
@@ -171,13 +174,18 @@ def prose(builder, cfg, data: dict, total_best: float, ci: list) -> dict[str, st
     }
 
 
-def refreshed_prose(old_builder, new_builder, cfg, values: dict) -> dict[str, str] | None:
-    """New prose for a page, or None when the old builder cannot reproduce its current prose."""
+def refreshed_prose(old_builder, new_builder, cfg, values: dict,
+                    old_cfg=None) -> dict[str, str] | None:
+    """New prose for a page, or None when the old builder cannot reproduce its current prose.
+
+    `old_cfg` is the country config the page was built from, where that differs from the
+    current one (`--old-config`): the check needs the inputs the page's prose was written
+    from, the new prose the current ones."""
     data = json.loads(values["__PV_DATA_JSON__"])
     t = data["totals"]
     best, (lo, hi) = t["mwp_best"], t["uncertainty"]["mwp_best_ci"]
     for b, ci_lo, ci_hi in itertools.product(*map(_rounding_candidates, (best, lo, hi))):
-        old = prose(old_builder, cfg, data, b, [ci_lo, ci_hi])
+        old = prose(old_builder, old_cfg or cfg, data, b, [ci_lo, ci_hi])
         if all(_norm(old[k]) == _norm(values[k]) for k in PROSE_KEYS):
             return prose(new_builder, cfg, data, b, [ci_lo, ci_hi])
     return None
@@ -200,6 +208,9 @@ def main() -> int:
     ap.add_argument("--refresh-prose", metavar="REV",
                     help="rewrite the confidence and composition prose with the current builder, "
                          "checked against atlas.py at REV (the builder the pages were made with)")
+    ap.add_argument("--old-config", metavar="DIR", type=Path,
+                    help="with --refresh-prose: a directory of configs/atlas/<aoi>.yaml files the "
+                         "pages were built from, for a config changed since (absent ones: current)")
     ap.add_argument("--aoi", help="AOI for a single page whose name does not carry it")
     ap.add_argument("--dry-run", action="store_true", help="check every page, write none")
     args = ap.parse_args()
@@ -218,10 +229,15 @@ def main() -> int:
             values = extract(old, page.read_text())
             aoi = args.aoi or aoi_of(page)
             fresh = {"__LAYERS_JSON__": lambda: atlas.map_layers_json(aoi),
+                     "__SMALL_ROOF_JSON__": lambda: atlas.small_rooftop_json(aoi),
                      "__AOI_KEY__": lambda: aoi}
             prose_note = ""
             if old_builder is not None:
-                new_prose = refreshed_prose(old_builder, atlas, atlas_config.load(aoi), values)
+                old_cfg = (atlas_config.load(aoi, args.old_config)
+                           if args.old_config and (args.old_config / f"{aoi}.yaml").is_file()
+                           else None)
+                new_prose = refreshed_prose(old_builder, atlas, atlas_config.load(aoi), values,
+                                            old_cfg)
                 if new_prose is None:
                     prose_note = " (prose kept: the old builder does not reproduce it)"
                 else:

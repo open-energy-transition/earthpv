@@ -7,6 +7,10 @@
      by scripts/build_docs_figures.py, this one is configuration and can be refreshed by
      scripts/retemplate_atlas.py without touching a single figure. -->
 <script id="pv-layers" type="application/json">[]</script>
+<!-- How the rooftop estimate below 400 m2 is made (`small_rooftop` in configs/atlas/<aoi>.yaml,
+     `atlas.small_rooftop_json`): roofclf's scores unless the config says otherwise. Germany's
+     is roof area priced against its register, with no classifier, and the page says so. -->
+<script id="pv-smallroof" type="application/json">{"method": "roofclf"}</script>
 <!-- Visualization stack (2026-10-19). Map: MapLibre GL JS (BSD-3), the open WebGL web-map
      engine -- vector-style layers, any raster/WMS/GeoJSON source, pan and zoom to the
      roof. Charts: Observable Plot on D3 (ISC), a grammar of graphics from the D3 authors
@@ -153,6 +157,8 @@
     padding: 15px 16px; box-shadow: var(--shadow); }
   .kpi .v { font-size: 25px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent); }
   .kpi .v small { font-size: 0.52em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  /* A figure the page cannot give reads as a statement, not as a zero (as on the tiles). */
+  .kpi .v.nm { font-size: 17px; font-weight: 650; color: var(--muted); padding-top: 6px; }
   .kpi .r { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 4px;
     font-variant-numeric: tabular-nums; }
   .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
@@ -494,17 +500,14 @@
     font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
   .ref-pick select { font: inherit; color: var(--ink); background: var(--panel-2);
     border: 1px solid var(--hair); border-radius: 6px; padding: 3px 6px; }
-  .comp-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
-  @media (max-width: 700px) { .comp-methods { grid-template-columns: repeat(2, 1fr); } }
-  .comp-method-card { background: var(--panel-2); border: 1px solid var(--card-ring);
-    border-radius: 10px; padding: 12px 13px; }
-  .comp-method-card .m-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
-    font-size: 10.5px; letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 8px; }
-  .comp-method-card .m-pct { font-size: 19px; font-weight: 740; letter-spacing: -0.01em; }
-  .comp-method-card .m-mwp { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ref-lede a { color: var(--accent); }
+  /* A part of the capacity and uncertainty charts: the whole row (name and bar) is the hover
+     target, so a part too small to see still answers. */
   .comp-seg-g { cursor: pointer; outline: none; }
+  .comp-seg-g .hit { fill: transparent; }
+  .comp-seg-g:hover .hit, .comp-seg-g:focus .hit { fill: var(--hair); }
   .comp-seg-g:hover rect.base, .comp-seg-g:focus rect.base { filter: brightness(1.15); }
-  .comp-seg-g:focus-visible rect.base { stroke: var(--ink); stroke-width: 1.5; }
+  .comp-seg-g:focus-visible .hit { stroke: var(--ink); stroke-width: 1; }
 
   /* ── charts drawn by Observable Plot ───────────────────────────────── */
   .chart-card { padding: 14px 18px; position: relative; }
@@ -979,7 +982,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
           <div class="r" id="kOsmSplit"></div>
           <div class="k">Training data hand-mapped in OpenStreetMap</div></div>
         <div class="kpi"><div class="v" id="kDomain">0</div>
-          <div class="k">of 0.1&deg; cells within the calibrated building-density range</div></div>
+          <div class="k" id="kDomainK">of 0.1&deg; cells within the calibrated building-density range</div></div>
         <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
           <div class="k" id="kCoverK"></div></div>
         <div class="kpi" id="kpiGen" hidden><div class="v" id="kGen">0</div>
@@ -1013,30 +1016,40 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     <div class="sec-head">
       <div>
         <div class="sec-label">Capacity</div>
-        <div class="sec-title">The same total, by method</div>
+        <div class="sec-title">What the Best estimate is made of</div>
       </div>
     </div>
 
-    <div class="card">
+    <!-- Both cards of this pair draw in the idiom of "Against official and published
+         figures" (owner, 2026-10-29, and again 2026-11-22: the earlier in-bar labels, small
+         monospace and log-scale dot plot were hard to read): each name ABOVE its bar in the
+         page's text face, the value at the bar's end, no text inside a coloured bar. Both
+         list the same parts in the same order under the same method headings, so a part
+         read on the left is found on the right. -->
+    <div class="card chart-card">
       <div class="fig-head">
         <div>
-          <div class="map-title" id="compTitle">Total Capacity</div>
+          <div class="map-title" id="compTitle">Best estimate, by method</div>
           <div class="map-sub" id="compSub"></div>
         </div>
         <div class="dlbar" data-fig="composition"></div>
       </div>
-      <div class="comp-legend" id="compLegend"></div>
-      <!-- Under each bar, `comp-sizes` brackets mark the installation-size range each run
-           of components covers, so a reader sees which share of the total sits above the
-           400 m2 floor and which below it, which the method colours alone do not say. -->
-      <div id="compMount"></div>
-
-      <div class="comp-methods" id="compMethods"></div>
       <!-- Written by `atlas._composition_note` from THIS page's own components, not
            typed here: the static version named roofclf as the dominant method and linked
            Pakistan's composition page, on every country's atlas, including the ones with
            no roofclf half at all. -->
-      <div class="hero-desc" style="margin-top:16px;">TerraMind segmentation of large arrays supplies 73% of Best; installations mapped in OpenStreetMap (solar thermal power plants among them) the remaining 27%.</div>
+      <p class="ref-lede">Large arrays outlined from Sentinel-2 supply 73% of Best; installations mapped in OpenStreetMap (solar thermal power plants among them) the remaining 27%.</p>
+      <!-- Under the Best bar, brackets mark the installation-size range each run of parts
+           covers, so a reader sees which share of the total sits above the 400 m2 floor and
+           which below it, which the method colours alone do not say. -->
+      <div id="compMount" class="plot-host"></div>
+      <details class="tablewrap">
+        <summary>All parts, in MWp</summary>
+        <div style="overflow-x:auto;"><table id="ctable">
+          <thead><tr><th>Part</th><th>MWp</th><th>Share of Best</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </details>
     </div>
   </section>
 
@@ -1050,25 +1063,20 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     <div class="card chart-card">
       <div class="fig-head">
         <div>
-          <div class="map-title">Point estimate and 90% credible interval, per component</div>
-          <div class="map-sub">log scale &middot; MWp &middot; hover a row for detail</div>
+          <div class="map-title">90% range of each part, around its own figure</div>
+          <div class="map-sub">% below and above each figure &middot; the wider the bar, the less
+            certain &middot; hover a row for detail</div>
         </div>
         <div class="dlbar" data-fig="uncertainty"></div>
       </div>
-      <div class="comp-legend" id="uncLegend"></div>
+      <p class="ref-lede" id="uncLede"></p>
       <div id="uncMount" class="plot-host"></div>
-      <div class="hero-desc" style="margin-top:12px;">Each row is one addend of the Best
-      estimate; the top row is their sum. The intervals do not add up to the total's:
-      components that share an error source were drawn together (one area-to-capacity
-      constant for every rooftop figure, one for every ground-mount figure, one re-draw of
-      the calibration areas for every roofclf figure), so the total's interval is narrower
-      than the sum of the parts' intervals would suggest. A row without a whisker is a
-      deterministic correction rather than a modelled quantity. The intervals cover measured
-      errors only; "How confident should you be in this?" below lists what they leave out.</div>
+      <p class="ref-lede" id="uncNote" style="margin-top:14px;">The ranges cover measured
+      errors only; <i>How confident should you be in this?</i> below lists what they leave out.</p>
       <details class="tablewrap">
-        <summary>All component intervals</summary>
+        <summary>All ranges, in MWp</summary>
         <div style="overflow-x:auto;"><table id="utable">
-          <thead><tr><th>Component</th><th>MWp</th><th>90% low</th><th>90% high</th></tr></thead>
+          <thead><tr><th>Part</th><th>MWp</th><th>90% low</th><th>90% high</th><th>Range</th></tr></thead>
           <tbody></tbody>
         </table></div>
       </details>
@@ -1523,6 +1531,17 @@ out geom;</div>
   // no measurement, so the tile, the cell hover and the province table say "not measured"
   // rather than 0. A page built before the status was written counts as measured when its
   // figure is non-zero.
+  // How the rooftop estimate below 400 m2 is made (the `pv-smallroof` block): roofclf unless
+  // the config names `roof_area`, the roof area of a building-size band at a constant fitted
+  // against a register (Germany), which no text on this page may then call roofclf.
+  const SMALL_ROOF = (() => {
+    try { return JSON.parse(document.getElementById("pv-smallroof").textContent) || {}; }
+    catch (e) { return {}; }
+  })();
+  const ROOF_AREA = SMALL_ROOF.method === "roof_area";
+  const roofAreaBand = () => `${fmt(SMALL_ROOF.roof_m2[0])} to ${fmt(SMALL_ROOF.roof_m2[1])} m²`;
+  // Whether roofclf replaces segmentation's rooftop figure for roofs of 400 m2 and more.
+  const HAS_GE400 = ((((T.uncertainty || {}).components || {}).ge400_roof || {}).mwp || 0) > 0;
   const HAS_SMALL_ROOF = T.small_rooftop_status
     ? !!T.small_rooftop_status.measured
     : (T.small_central || 0) > 0;
@@ -1950,9 +1969,12 @@ out geom;</div>
     {id: "osm", prop: "o", label: "OSM-mapped",
      desc: "Installations mapped by hand in OpenStreetMap, at the atlas's conversion constants"},
     {id: "large", prop: "l", label: "Satellite-detected, ≥ 400 m²",
-     desc: "Sentinel-2 segmentation and roofclf estimates for arrays of 400 m² and larger"},
+     desc: "Sentinel-2 segmentation" + (HAS_GE400 ? " and roofclf estimates" : "")
+       + " for arrays of 400 m² and larger"},
     {id: "small", prop: "s", label: "Satellite rooftop, < 400 m²",
-     desc: "Sentinel-2 roofclf density estimate for rooftop arrays below the 400 m² segmentation floor"},
+     desc: ROOF_AREA
+       ? `Roof area priced against ${SMALL_ROOF.register} for rooftop PV below the 400 m² segmentation floor, no classifier`
+       : "Sentinel-2 roofclf density estimate for rooftop arrays below the 400 m² segmentation floor"},
     {id: "ground", prop: "f", label: "Satellite farm ground, < 400 m²",
      desc: "Farm ground-PV detector: arrays beside fields below 400 m², where it is calibrated"},
     {id: "csp", prop: "t", label: "Solar thermal power (CSP)", unit: "MW",
@@ -3918,10 +3940,14 @@ out geom;</div>
   // method contributes over: the split between these methods is a size split first.
   // Named by SOURCE first: hand-mapped in OpenStreetMap, or detected from Sentinel-2.
   const COMP_METHOD_META = {
-    osm:     { name: "OSM-mapped", cls: "osm", size: "any size" },
-    seg:     { name: "Satellite: TerraMind segmentation", cls: "seg", size: "≥ 400 m²" },
-    roofclf: { name: "Satellite: roofclf", cls: "roofclf", size: "any size, where calibrated" },
-    ground:  { name: "Satellite: farm ground PV", cls: "ground", size: "< 400 m², where calibrated" },
+    // The method headings of the capacity and uncertainty charts, in the words of "How the
+    // estimate is built" below. No model name: the segmentation is a TerraMind on some
+    // atlases and a ResNet-50 on others.
+    osm:     { name: "Mapped by hand in OpenStreetMap", cls: "osm", size: "any size" },
+    seg:     { name: "Outlined from Sentinel-2 (segmentation)", cls: "seg", size: "≥ 400 m²" },
+    roofclf: { name: ROOF_AREA ? `Roof area priced against ${SMALL_ROOF.register}`
+      : "Estimated building by building (roofclf)", cls: "roofclf", size: "any size, where calibrated" },
+    ground:  { name: "Small arrays beside fields, from Sentinel-2", cls: "ground", size: "< 400 m², where calibrated" },
   };
   const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "ground"];
 
@@ -3943,233 +3969,300 @@ out geom;</div>
       ? `, converted to panel area with the calibration areas${detail}` : ", converted to panel area by its calibration";
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
-        short: "OSM-mapped rooftop, counted from the map",
+        short: "Rooftop installations",
         label: "OSM-mapped rooftop PV that Best counts from the map: no satellite detection nearby, or one "
           + "whose figure Best does not use. Where it uses a satellite figure that covers a mapped "
           + "installation, it counts that figure instead, so nothing is counted twice.", size: "any size" },
       { key: "osm_unmatched_ground", method: "osm", placement: "ground", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
-        short: "OSM-mapped ground-mount, counted from the map",
+        short: "Ground-mounted installations",
         label: "OSM-mapped ground-mount PV that Best counts from the map: no satellite detection nearby, or one "
           + "whose figure Best does not use. Where it uses a satellite figure that covers a mapped "
           + "installation, it counts that figure instead, so nothing is counted twice.", size: "any size" },
       { key: "osm_unmatched_csp", method: "osm", placement: "ground", mwp: comp("osm_unmatched_csp").mwp, ci: comp("osm_unmatched_csp").ci,
-        short: "Solar thermal power plants (CSP), from the map",
+        short: "Solar thermal power plants (CSP)",
         label: "Concentrated solar power plants mapped in OpenStreetMap, at their electric rating in MW: "
           + "the map's own figure where it gives one, otherwise "
           + `${(T.csp_status || {}).mw_per_km2 || 27.2} MW per km² of site. Not photovoltaic, and no `
           + "satellite figure stands in for them.", size: "any size" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
-        short: "OSM-mapped above the satellite figure",
+        short: "Top-up where the map holds more than the satellite figure",
         label: "Cells where the OSM-mapped capacity exceeds the satellite estimate: Best takes the mapped "
           + "figure there, so it never reads below what is already mapped.", size: "any size" },
       { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
-        short: "Satellite segmentation, rooftop",
-        label: "TerraMind segmentation of Sentinel-2, rooftop arrays in cells outside roofclf's calibrated "
-          + "density range; scaled up for the arrays it misses, minus those already counted from the map",
+        short: "Rooftop arrays, 400 m² and more",
+        label: "Segmentation of Sentinel-2, rooftop arrays"
+          + (HAS_GE400 ? " in cells outside roofclf's calibrated density range" : "")
+          + "; scaled up for the arrays it misses, minus those already counted from the map",
         size: "≥ 400 m²" },
       { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
-        short: "Satellite segmentation, ground-mount",
-        label: "TerraMind segmentation of Sentinel-2, ground-mounted arrays in every cell (there is no roof "
-          + "for roofclf to score); scaled up for the arrays it misses, minus those already counted from the map",
+        short: "Ground-mounted arrays, 400 m² and more",
+        label: "Segmentation of Sentinel-2, ground-mounted arrays in every cell"
+          + (HAS_GE400 ? " (there is no roof for roofclf to score)" : "")
+          + "; scaled up for the arrays it misses, minus those already counted from the map",
         size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
-        short: "Satellite roofclf, rooftop ≥ 400 m²",
+        short: "Buildings of 400 m² and more",
         label: "roofclf, rooftops of 400 m² and more" + byScore("ge400_roof") + converted("")
           + "; replaces the segmentation figure in cells inside the calibrated density range", size: "≥ 400 m²" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
-        short: "Satellite roofclf, rooftop < 400 m²",
-        label: "roofclf, rooftops under 400 m²" + byScore("small_central")
-          + converted(" (per building size and density)") + " and scaled up for the panel area the "
-          + "scores miss; cells inside the calibrated density range only",
+        short: ROOF_AREA ? "Rooftop PV below 400 m²" : "Buildings under 400 m²",
+        label: ROOF_AREA
+          ? `The roof area of buildings of ${roofAreaBand()}, at ${SMALL_ROOF.kwp_per_m2} kWp per m² `
+            + `of roof, a constant fitted against ${SMALL_ROOF.register} so that this band stands for `
+            + `rooftop PV below 400 m²; roofs already counted from the map or by segmentation are left `
+            + `out. No classifier: nothing is observed on any one roof.`
+          : "roofclf, rooftops under 400 m²" + byScore("small_central")
+            + converted(" (per building size and density)") + " and scaled up for the panel area the "
+            + "scores miss; cells inside the calibrated density range only",
         size: "< 400 m²" },
       { key: "small_ground", method: "ground", placement: "ground", mwp: comp("small_ground").mwp, ci: comp("small_ground").ci,
-        short: "Satellite farm ground PV, < 400 m²",
-        label: "Farm ground-PV detector - arrays beside fields, which have no roof for roofclf to score, below "
+        short: "Arrays under 400 m²",
+        label: "Farm ground-PV detector - arrays beside fields, which have no roof to score, below "
           + "400 m², inside its own calibration domain"
           + (T.uncertainty.small_ground_interval ? `; interval: ${T.uncertainty.small_ground_interval}` : ""),
         size: "< 400 m²" },
     ];
     const verified = [
       { key: "osm_roof", method: "osm", placement: "roof", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
-        short: "OSM-mapped rooftop", label: "OSM-mapped rooftop PV, all of it, whether or not a satellite detection covers it", size: "any size" },
+        short: "Rooftop installations", label: "OSM-mapped rooftop PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "osm_ground", method: "osm", placement: "ground", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
-        short: "OSM-mapped ground-mount", label: "OSM-mapped ground-mount PV, all of it, whether or not a satellite detection covers it", size: "any size" },
+        short: "Ground-mounted installations", label: "OSM-mapped ground-mount PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "osm_csp", method: "osm", placement: "ground", mwp: comp("osm_csp").mwp, ci: comp("osm_csp").ci,
         short: "Solar thermal power plants (CSP)", label: "Concentrated solar power plants mapped in OpenStreetMap, at their electric rating in MW", size: "any size" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
   }
 
-  function compMethodTotals(rows, total){
-    const sums = {}; COMP_METHOD_ORDER.forEach(m => sums[m] = 0);
-    rows.forEach(r => sums[r.method] += r.mwp);
-    return COMP_METHOD_ORDER.filter(m => sums[m] > 0).map(m =>
-      ({ method: m, ...COMP_METHOD_META[m], mwp: sums[m], pct: 100 * sums[m] / total }));
+  // ── the capacity and uncertainty charts: shared row layout ───────────────────────
+  // Both are drawn in the idiom of "Against official and published figures" (owner,
+  // 2026-10-29; asked again for this pair 2026-11-22): each name ABOVE its bar in the
+  // page's text face, the value at the bar's end, no text inside a coloured bar, so every
+  // label sits on the card's own background in ink. Both list the same parts in the same
+  // order under the same method headings. Drawn in plain SVG, not Plot, so they render
+  // without the CDN and wrap long names by measured width rather than truncating them.
+  const CU = {size: 12.5, line: 16, bar: 14, tier: 20, gap: 12, swatch: 10};
+  const cuMeasure = document.createElement("canvas").getContext("2d");
+  function cuFont(P, weight, size){ return `${weight} ${size || CU.size}px ${P.fontDisplay}`; }
+  function cuWidth(P, text, weight, size){
+    cuMeasure.font = cuFont(P, weight, size);
+    return cuMeasure.measureText(text).width;
   }
-  function niceStep(max, n){
-    const raw = max / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
-    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
-  }
-  // Text inside a coloured segment picks white or ink by the fill's luminance, so it
-  // clears contrast on every method colour in both themes.
-  function inkOn(hex){
-    const h = hex.replace("#", "");
-    if (h.length < 6) return "rgba(0,0,0,0.78)";
-    const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
-      .map(c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.25 ? "rgba(0,0,0,0.78)" : "rgba(255,255,255,0.95)";
-  }
-
-  // Drawn directly in SVG rather than with Plot: it needs in-bar labels that are only
-  // drawn where they fit, size brackets under each bar and a shared absolute axis, and
-  // it renders without the CDN, like the pose plot.
-  function compositionSvg(width, interactive){
-    const P = palette();
-    const { best, verified } = compRows();
-    const W = Math.max(300, width), narrow = W < 560;
-    const mL = narrow ? 6 : 132, mR = 12;
-    const tiers = [
-      {label: "Best estimate", total: T.mwp_best, rows: best, h: 34},
-      {label: "Verified (floor)", total: T.mwp_verified, rows: verified, h: 24},
-    ].filter(t => t.rows.length);
-    const xmax = Math.max(...tiers.map(t => t.total), 1);
-    const x = v => mL + v / xmax * (W - mL - mR);
-    const sid = `cmh${++chartSeq}`, tid = `cmt${chartSeq}`;
-    let y = 4;
-    const parts = [];
-    for (const t of tiers){
-      if (narrow) y += 16;
-      t.y = y; y += t.h + 6 + 22 + 10;
+  // A name, then (in the secondary ink) what it amounts to, wrapped to `maxW`; the second
+  // part moves to a line of its own rather than splitting. Returns the y below the block.
+  function cuLabel(svg, P, x, y, main, extra, maxW, weight){
+    cuMeasure.font = cuFont(P, weight);
+    const lines = wrapMeasured(cuMeasure, main, maxW).map(t => ({t, extra: false}));
+    if (extra){
+      const last = lines[lines.length - 1];
+      const room = maxW - cuWidth(P, last.t + "  ", weight) - cuWidth(P, extra, 400);
+      if (room >= 0) last.extra = extra;
+      else lines.push({t: "", extra: extra.replace(/^·\s*/, "")});
     }
-    const axisY = y, H = axisY + 30;
-    const svg = el("svg", {width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
-      "aria-label": `Best estimate and Verified tiers of ${AOI}'s PV capacity, by method`,
-      "font-family": P.fontMono, "font-size": 10.5});
+    lines.forEach((ln, i) => {
+      const t = el("text", Object.assign({x, y: y + 12 + i * CU.line, fill: P.ink, "font-weight": weight},
+        cuHalo(P)));
+      if (ln.t) t.appendChild(document.createTextNode(ln.t));
+      if (ln.extra){
+        const s = el("tspan", {fill: P.ink2, "font-weight": 400});
+        s.textContent = (ln.t ? "  " : "") + ln.extra;
+        t.appendChild(s);
+      }
+      svg.appendChild(t);
+    });
+    return y + lines.length * CU.line;
+  }
+  // Text crossing a gridline keeps a rim of the card's own colour, so the line never
+  // runs through a letter.
+  const cuHalo = P => ({stroke: P.panel, "stroke-width": 4, "stroke-linejoin": "round", "paint-order": "stroke"});
+  function cuSvg(P, W, aria){
+    return el("svg", {width: W, role: "img", "aria-label": aria, "font-family": P.fontDisplay,
+      "font-size": CU.size});
+  }
+  function cuFinish(svg, W, H){
+    svg.setAttribute("height", Math.ceil(H));
+    svg.setAttribute("viewBox", `0 0 ${W} ${Math.ceil(H)}`);
+    return svg;
+  }
+  function cuPatterns(svg, P){
+    const sid = `cmh${++chartSeq}`;
     const defs = el("defs", {});
     const hatch = el("pattern", {id: sid, patternUnits: "userSpaceOnUse", width: 8, height: 8, patternTransform: "rotate(-45)"});
     hatch.appendChild(el("rect", {width: 3, height: 8, fill: "rgba(0,0,0,0.30)"}));
-    const tex = el("pattern", {id: tid, patternUnits: "userSpaceOnUse", width: 7, height: 7, patternTransform: "rotate(45)"});
-    tex.appendChild(el("rect", {width: 2, height: 7, fill: "rgba(255,255,255,0.28)"}));
-    defs.appendChild(hatch); defs.appendChild(tex); svg.appendChild(defs);
-    // axis first, so the gridlines sit behind the bars
-    const step = niceStep(xmax, narrow ? 3 : 5);
-    for (let v = 0; v <= xmax * 1.0001; v += step){
-      svg.appendChild(el("line", {x1: x(v), x2: x(v), y1: 0, y2: axisY - 4, stroke: P.hair}));
-      const tx = el("text", {x: x(v), y: axisY + 10, fill: P.muted, "text-anchor": v === 0 ? "start" : "middle"});
-      tx.textContent = compact(v);
-      svg.appendChild(tx);
-    }
-    const ax = el("text", {x: W - mR, y: axisY + 25, fill: P.muted, "text-anchor": "end"});
-    ax.textContent = "MWp →";
-    svg.appendChild(ax);
-    for (const t of tiers){
-      const lab = el("text", {x: narrow ? mL : mL - 12, y: narrow ? t.y - 5 : t.y + t.h / 2 - 2, fill: P.ink,
-        "text-anchor": narrow ? "start" : "end", "font-family": P.fontDisplay, "font-size": 12, "font-weight": 650});
-      lab.textContent = narrow ? `${t.label} · ${fmt(t.total)} MWp` : t.label;
-      svg.appendChild(lab);
-      if (!narrow){
-        const sub = el("text", {x: mL - 12, y: t.y + t.h / 2 + 12, fill: P.muted, "text-anchor": "end"});
-        sub.textContent = `${fmt(t.total)} MWp`;
-        svg.appendChild(sub);
-      }
+    defs.appendChild(hatch); svg.appendChild(defs);
+    return {hatch: `url(#${sid})`};
+  }
+  // One bar (or stacked segment) in its method colour, hatched where ground-mounted.
+  function cuBar(g, P, pat, r, x0, y0, w, h){
+    const fill = methodColor(P, r.method);
+    // The top-up to the mapped figure (`texture`) is drawn paler, not striped: stripes on
+    // this page mean ground-mounted, and the top-up is neither placement in particular.
+    g.appendChild(el("rect", {class: "base", x: x0, y: y0, width: w, height: h, rx: Math.min(2, w / 2), fill,
+      "fill-opacity": r.texture ? 0.5 : null}));
+    if (r.placement === "ground") g.appendChild(el("rect", {x: x0, y: y0, width: w, height: h, fill: pat.hatch}));
+  }
+  // Hover and keyboard focus on a whole row (or a stacked segment), sharing the map's tooltip.
+  function cuHover(g, interactive, aria, html){
+    if (!interactive) return;
+    g.setAttribute("class", "comp-seg-g");
+    g.setAttribute("tabindex", 0);
+    g.setAttribute("role", "img");
+    g.setAttribute("aria-label", aria);
+    const show = (cx, cy) => showTip(cx, cy, html);
+    g.addEventListener("pointermove", e => show(e.clientX, e.clientY));
+    g.addEventListener("pointerleave", hideTip);
+    g.addEventListener("focus", () => { const bb = g.getBoundingClientRect(); show(bb.left + bb.width / 2, bb.top); });
+    g.addEventListener("blur", hideTip);
+  }
+  const cuCi = r => r.ci ? `${fmt5(r.ci[0])} – ${fmt5(r.ci[1])} MWp` : "fixed, no modelled range";
+  function cuPartTip(r, total, of = "Best"){
+    return `<div class="th">${COMP_METHOD_META[r.method].name}</div>`
+      + row("Part", r.short) + row("MWp", fmt5(r.mwp)) + row(`Share of ${of}`, `${(100 * r.mwp / total).toFixed(1)}%`)
+      + (r.placement ? row("Placement", r.placement === "ground" ? "Ground-mounted" : "Rooftop") : "")
+      + row("90% range", cuCi(r)) + `<div class="t-desc">${r.label}</div>`;
+  }
+  // Mapped installations a satellite figure already covers count inside that figure, so the
+  // OpenStreetMap heading of Best reads less than Verified; say so where it does.
+  function osmGroupNote(best){
+    const osm = best.filter(r => r.method === "osm").reduce((s, r) => s + r.mwp, 0);
+    return T.mwp_verified != null && osm < T.mwp_verified - 0.5
+      ? "Mapped installations a satellite figure already covers are counted once, inside that figure." : "";
+  }
+
+  // Capacity: Best as one stacked bar (with the Verified floor beneath it) for the whole,
+  // then every part as its own bar on the same MWp scale, grouped by method, so each part is
+  // named and valued where the stacked bar has no room to say it.
+  function compositionSvg(width, interactive){
+    const P = palette();
+    const { best, verified } = compRows();
+    const W = Math.max(300, width);
+    const valueOf = v => `${fmt(v)} MWp`;
+    const mR = Math.ceil(Math.max(...[T.mwp_best, T.mwp_verified || 0].map(v => cuWidth(P, valueOf(v), 400))) + 14);
+    const xmax = Math.max(T.mwp_best, T.mwp_verified || 0, 1);
+    const x = v => 1 + v / xmax * (W - mR - 1);
+    const svg = cuSvg(P, W, `Best estimate and Verified floor of ${AOI}'s PV capacity, by method and part`);
+    const pat = cuPatterns(svg, P);
+    let y = 0;
+
+    const tier = (label, extra, rows, total) => {
+      y = cuLabel(svg, P, 1, y, label, extra, W - 2, 650) + 4;
       let acc = 0;
-      t.rows.forEach((r, i) => {
+      rows.forEach((r, i) => {
         const x0 = x(acc), x1 = x(acc + r.mwp); acc += r.mwp;
-        const w = Math.max(0.5, x1 - x0 - (i < t.rows.length - 1 ? 2 : 0));
-        const g = el("g", {class: "comp-seg-g", tabindex: interactive ? 0 : null, role: interactive ? "img" : null,
-          "aria-label": interactive ? `${r.label}: ${fmt(r.mwp)} MWp` : null});
-        const fill = methodColor(P, r.method);
-        g.appendChild(el("rect", {class: "base", x: x0, y: t.y, width: w, height: t.h, fill}));
-        if (r.placement === "ground") g.appendChild(el("rect", {x: x0, y: t.y, width: w, height: t.h, fill: `url(#${sid})`}));
-        if (r.texture) g.appendChild(el("rect", {x: x0, y: t.y, width: w, height: t.h, fill: `url(#${tid})`}));
-        const pct = 100 * r.mwp / t.total;
-        const place = r.placement === "ground" ? "Ground " : r.placement === "roof" ? "Roof " : "";
-        let text = `${place}${pct.toFixed(0)}%`;
-        if (text.length * 6.6 + 10 > w) text = `${pct.toFixed(0)}%`;
-        if (text.length * 6.6 + 8 <= w){
-          const tx = el("text", {x: x0 + w / 2, y: t.y + t.h / 2 + 4, "text-anchor": "middle",
-            fill: inkOn(fill), "font-weight": 700, "font-family": P.fontDisplay, "font-size": 11.5,
-            "pointer-events": "none"});
-          tx.textContent = text;
-          g.appendChild(tx);
-        }
-        if (interactive){
-          const show = (cx, cy) => {
-            const ci = r.ci ? `${fmt5(r.ci[0])} – ${fmt5(r.ci[1])}` : "deterministic, no drawn interval";
-            showTip(cx, cy, `<div class="th">${COMP_METHOD_META[r.method].name.toUpperCase()}</div>`
-              + row("MWp", fmt5(r.mwp)) + row("Share of tier", `${pct.toFixed(1)}%`)
-              + (r.placement ? row("Placement", r.placement === "ground" ? "Ground-mount" : "Rooftop") : "")
-              + row("90% CI", ci) + `<div class="t-desc">${r.label}</div>`);
-          };
-          g.addEventListener("pointermove", e => show(e.clientX, e.clientY));
-          g.addEventListener("pointerleave", hideTip);
-          g.addEventListener("focus", () => { const bb = g.getBoundingClientRect(); show(bb.left + bb.width / 2, bb.top); });
-          g.addEventListener("blur", hideTip);
-        }
+        // a 2 px gap in the card's own colour between segments, none after the last
+        const w = Math.max(1, x1 - x0 - (i < rows.length - 1 ? 2 : 0));
+        const g = el("g", {});
+        cuBar(g, P, pat, r, x0, y, w, CU.tier);
+        cuHover(g, interactive, `${label}: ${r.short}, ${fmt(r.mwp)} MWp`,
+          cuPartTip(r, total, total === T.mwp_best ? "Best" : "Verified"));
         svg.appendChild(g);
       });
-      // Size brackets: equal neighbours collapse into one run, so a reader sees which
-      // slice of the tier is above the 400 m2 floor and which below it.
-      const runs = [];
-      t.rows.forEach(r => {
-        const last = runs[runs.length - 1];
-        if (last && last.size === (r.size || "")) last.mwp += r.mwp;
-        else runs.push({size: r.size || "", mwp: r.mwp});
-      });
-      const gs = el("g", {class: "comp-sizes"});
-      let a2 = 0;
-      const by = t.y + t.h + 7;
-      for (const run of runs){
-        const x0 = x(a2) + 1, x1 = x(a2 + run.mwp) - 1; a2 += run.mwp;
-        if (x1 - x0 < 4) continue;
-        gs.appendChild(el("path", {d: `M${x0},${by}v4H${x1}v-4`, fill: "none", stroke: P.muted, "stroke-width": 1}));
-        if ((run.size.length * 6.3 + 8) <= (x1 - x0)){
-          const tx = el("text", {x: (x0 + x1) / 2, y: by + 16, "text-anchor": "middle", fill: P.muted, "font-size": 10});
-          tx.textContent = run.size;
-          gs.appendChild(tx);
-        }
+      const v = el("text", {x: x(total) + 8, y: y + CU.tier / 2 + 4.5, fill: P.ink2,
+        "font-variant-numeric": "tabular-nums"});
+      v.textContent = valueOf(total);
+      svg.appendChild(v);
+      y += CU.tier;
+    };
+
+    tier("Best estimate", null, best, T.mwp_best);
+    // Size brackets: equal neighbours collapse into one run, so a reader sees which slice
+    // of Best sits above the 400 m2 floor and which below it.
+    const runs = [];
+    best.forEach(r => {
+      const last = runs[runs.length - 1];
+      if (last && last.size === (r.size || "")) last.mwp += r.mwp;
+      else runs.push({size: r.size || "", mwp: r.mwp});
+    });
+    let a2 = 0;
+    const by = y + 5;
+    let sizeRow = false;
+    const gs = el("g", {class: "comp-sizes"});
+    for (const run of runs){
+      const x0 = x(a2) + 1, x1 = x(a2 + run.mwp) - 1; a2 += run.mwp;
+      if (x1 - x0 < 6) continue;
+      gs.appendChild(el("path", {d: `M${x0},${by}v4H${x1}v-4`, fill: "none", stroke: P.muted, "stroke-width": 1}));
+      const label = run.size;
+      if (cuWidth(P, label, 400, 11.5) + 6 <= x1 - x0){
+        const t = el("text", {x: (x0 + x1) / 2, y: by + 19, "text-anchor": "middle", fill: P.ink2, "font-size": 11.5});
+        t.textContent = label;
+        gs.appendChild(t);
+        sizeRow = true;
       }
-      svg.appendChild(gs);
     }
-    return svg;
+    svg.appendChild(gs);
+    y = by + (sizeRow ? 26 : 10);
+    if (verified.length && T.mwp_verified != null)
+      tier("Verified, the floor", "· hand-mapped in OpenStreetMap only", verified, T.mwp_verified);
+
+    // Every part, grouped by method.
+    y += 22;
+    svg.appendChild(el("line", {x1: 0, x2: W, y1: y - 12, y2: y - 12, stroke: P.hair}));
+    const note = osmGroupNote(best);
+    for (const m of COMP_METHOD_ORDER){
+      const rows = best.filter(r => r.method === m);
+      if (!rows.length) continue;
+      const sum = rows.reduce((s, r) => s + r.mwp, 0);
+      y += 6;
+      svg.appendChild(el("rect", {x: 1, y: y + 3, width: CU.swatch, height: CU.swatch, rx: 3, fill: methodColor(P, m)}));
+      y = cuLabel(svg, P, CU.swatch + 8, y, COMP_METHOD_META[m].name,
+        `${(100 * sum / T.mwp_best).toFixed(1)}% of Best`, W - CU.swatch - 10, 700);
+      if (m === "osm" && note){
+        cuMeasure.font = cuFont(P, 400, 12);
+        wrapMeasured(cuMeasure, note, W - CU.swatch - 10).forEach(line => {
+          const t = el("text", {x: CU.swatch + 8, y: y + 12, fill: P.ink2, "font-size": 12});
+          t.textContent = line;
+          svg.appendChild(t);
+          y += 15;
+        });
+      }
+      y += 4;
+      for (const r of rows){
+        const g = el("g", {});
+        const top = y;
+        if (interactive) g.appendChild(el("rect", {class: "hit", x: -4, y: top - 2, width: W + 8,
+          height: 0, rx: 4}));
+        y = cuLabel(g, P, 1, y, r.short, null, W - 2, 400) + 3;
+        const w = Math.max(2, x(r.mwp) - 1);
+        cuBar(g, P, pat, r, 1, y, w, CU.bar);
+        const v = el("text", {x: 1 + w + 8, y: y + CU.bar / 2 + 4.5, fill: P.ink2,
+          "font-variant-numeric": "tabular-nums"});
+        v.textContent = valueOf(r.mwp);
+        g.appendChild(v);
+        y += CU.bar;
+        if (interactive) g.firstChild.setAttribute("height", y - top + 6);
+        cuHover(g, interactive, `${r.short}: ${fmt(r.mwp)} MWp`, cuPartTip(r, T.mwp_best));
+        svg.appendChild(g);
+        y += CU.gap;
+      }
+    }
+    return cuFinish(svg, W, y);
   }
+  // The method as a download names it: `roofclf` is also the colour group of a roof-area
+  // estimate (Germany), which a CSV must not call roofclf.
+  const csvMethod = m => m === "roofclf" && ROOF_AREA ? "roof_area" : m;
   function compositionCSV(){
     const { best, verified } = compRows();
     const out = [];
     for (const [tier, rows, total] of [["best", best, T.mwp_best], ["verified", verified, T.mwp_verified]])
-      for (const r of rows) out.push([tier, r.key, r.method, r.placement || "", r.size, r.mwp,
+      for (const r of rows) out.push([tier, r.key, csvMethod(r.method), r.placement || "", r.size, r.mwp,
         r.ci ? r.ci[0] : "", r.ci ? r.ci[1] : "", +(r.mwp / total).toFixed(5), r.label]);
     return [["tier", "component", "method", "placement", "installation_size", "mwp", "ci90_low", "ci90_high",
       "share_of_tier", "description"], out];
   }
 
   function renderCompositionChrome(){
-    const { best, verified } = compRows();
+    const { best } = compRows();
     // Counted from the rows that actually survived, not written into the markup: an atlas
     // built without an optional component must not still announce it in its own title.
     const nMethods = new Set(best.map(r => r.method)).size;
-    document.getElementById("compTitle").innerHTML =
-      `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
-    document.getElementById("compSub").textContent =
-      "Colour is the source and method, hatching is ground-mount, length is MWp on one shared axis. "
-      + "An installation both mapped and detected counts once · hover a segment";
-    const shownMethods = new Set([...best, ...verified].map(r => r.method));
-    let legend = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
-      `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}`
-      + `<span class="comp-legend-size">${COMP_METHOD_META[m].size}</span></div>`).join("");
-    // Only claim the hatch means something when something is actually hatched.
-    if ([...best, ...verified].some(r => r.placement === "ground")) {
-      legend += `<div class="comp-legend-item"><span class="comp-swatch placement-ground"></span>`
-        + `Ground-mount (hatched); unhatched is rooftop</div>`;
-    }
-    document.getElementById("compLegend").innerHTML = legend;
-    const methodTotals = compMethodTotals(best, T.mwp_best);
-    document.getElementById("compMethods").innerHTML = methodTotals.map(m => `
-      <div class="comp-method-card">
-        <div class="m-name"><span class="comp-swatch ${m.cls}"></span>${m.name}</div>
-        <div class="m-pct">${m.pct.toFixed(1)}%</div>
-        <div class="m-mwp">${fmt(m.mwp)} MWp</div>
-      </div>`).join("");
+    document.getElementById("compTitle").textContent =
+      `Best estimate: ${best.length} part${best.length === 1 ? "" : "s"} from ${nMethods} method${nMethods === 1 ? "" : "s"}`;
+    const hatched = best.some(r => r.placement === "ground");
+    document.getElementById("compSub").textContent = "MWp · one linear scale · colour is the method"
+      + (hatched ? ", hatching is ground-mounted" : "") + " · hover a part for detail";
+    document.querySelector("#ctable tbody").innerHTML = best.map(r =>
+      `<tr><td>${COMP_METHOD_META[r.method].name}: ${r.short}</td><td>${fmt5(r.mwp)}</td>`
+      + `<td>${(100 * r.mwp / T.mwp_best).toFixed(1)}%</td></tr>`).join("")
+      + `<tr><td><b>Best estimate</b></td><td><b>${fmt5(T.mwp_best)}</b></td><td>100%</td></tr>`;
   }
 
   // ── "How the estimate is built": the methods in plain language ───────────────────
@@ -4210,7 +4303,7 @@ out geom;</div>
         + ` No satellite detection stands in for a mirror field.`));
     }
     if (hasSeg) steps.push(step("large",
-      `<b>Large arrays, outlined from Sentinel-2.</b> A TerraMind model, fine-tuned on mapped `
+      `<b>Large arrays, outlined from Sentinel-2.</b> A segmentation model, fine-tuned on mapped `
       + `installations, marks the pixels that look like solar panels, and touching pixels become `
       + `one detected array. At 10 m per pixel, an array needs roughly 400 m², about four pixels, `
       + `to be outlined reliably. Each detection counts in proportion to how often detections of `
@@ -4219,7 +4312,17 @@ out geom;</div>
       + `footprints decide whether a detection is on a roof or on the ground.`
       + (hasRoofclf && hasGe400 ? ` Where roofclf is calibrated (next step), only the `
         + `ground-mounted detections are used.` : "")));
-    if (hasRoofclf) steps.push(step("accent",
+    if (hasRoofclf && ROOF_AREA) steps.push(step("accent",
+      `<b>Smaller rooftop arrays, from roof area.</b> Below about 400 m² an array is smaller than `
+      + `the pixels it sits in and cannot be outlined. ${SMALL_ROOF.register}, the national register, `
+      + `records every installation, so here no classifier is used: the roof area of every building `
+      + `of ${roofAreaBand()} is multiplied by ${SMALL_ROOF.kwp_per_m2} kWp per m² of roof, a constant `
+      + `fitted against the register so that this band stands for the rooftop PV below 400 m². `
+      + `Roofs already counted from the map or by segmentation are left out. Nothing is observed on `
+      + `any one roof: the figure says where small rooftop PV is likely, at the register's level, `
+      + `not where panels were seen. It is applied in ${fmt(T.n_domain_cells || 0)} of `
+      + `${fmt(T.n_cells || 0)} cells here; in the others rooftop PV below 400 m² is not measured.`));
+    else if (hasRoofclf) steps.push(step("accent",
       `<b>Smaller rooftop arrays, scored building by building (roofclf).</b> Below about 400 m² `
       + `an array is smaller than the pixels it sits in and cannot be outlined. Instead a `
       + `classifier, roofclf, gives every building footprint a score between 0 and 1 from the `
@@ -4268,76 +4371,140 @@ out geom;</div>
       + `also says what the range leaves out.</p>`;
   }
 
-  // ── uncertainty: one row per Best component, point and 90% interval, log axis ────
-  // Log because the components span three to four orders of magnitude and the intervals
-  // are multiplicative (lognormal constants, ratio bootstraps): on a log axis an interval's
-  // width reads as relative uncertainty, which is what a reader comparing rows wants.
+  // ── uncertainty: each part's 90% range as % below and above its own figure ───────
+  // Relative, not absolute: the parts span three to four orders of magnitude, so on one MWp
+  // scale the small parts' ranges vanish, and the log scale this chart used until
+  // 2026-11-22 was hard to read (owner). "How sure is this part" is a relative question,
+  // and a range read as "-19% to +22%" answers it. The MWp figures are in the hover and
+  // the table. Same parts, same order and same method headings as the capacity chart.
+  const UNC_CAP_PCT = 200;   // ranges reaching further are drawn to the edge with an arrow
   function uncRows(){
     const { best } = compRows();
-    const rows = best.map(r => ({name: r.short, label: r.label, method: r.method, mwp: r.mwp,
-      lo: r.ci ? Math.max(r.ci[0], r.mwp * 1e-3) : r.mwp, hi: r.ci ? Math.max(r.ci[1], r.mwp) : r.mwp, hasCi: !!r.ci}));
+    const rows = best.map(r => ({key: r.key, name: r.short, label: r.label, method: r.method, mwp: r.mwp,
+      lo: r.ci ? Math.min(r.ci[0], r.mwp) : null, hi: r.ci ? Math.max(r.ci[1], r.mwp) : null, hasCi: !!r.ci}));
     const ci = T.mwp_best_ci;
-    rows.unshift({name: "Best estimate, total", label: "Sum of every component below", method: "total",
-      mwp: T.mwp_best, lo: ci ? ci[0] : T.mwp_best, hi: ci ? ci[1] : T.mwp_best, hasCi: !!ci});
+    rows.unshift({key: "total", name: "Best estimate, the total", label: "Sum of every part below",
+      method: "total", mwp: T.mwp_best, lo: ci ? ci[0] : null, hi: ci ? ci[1] : null, hasCi: !!ci});
     return rows;
+  }
+  const uncPct = (v, mwp) => mwp > 0 ? 100 * (v / mwp - 1) : 0;
+  const signedPct = p => { const r = Math.round(p); return r === 0 ? "0%" : (r > 0 ? "+" : "−") + Math.abs(r) + "%"; };
+  function uncRangeText(r){
+    if (!r.hasCi) return "fixed";
+    const lo = uncPct(r.lo, r.mwp), hi = uncPct(r.hi, r.mwp);
+    if (Math.round(lo) === 0 && Math.round(hi) === 0) return "±0%";
+    return `${signedPct(lo)} to ${signedPct(hi)}`;
   }
   function uncChart(width, interactive){
     const P = palette();
     const rows = uncRows();
-    const narrow = width < 560;
-    const maxChars = narrow ? 18 : 44;
-    const longest = Math.min(maxChars, Math.max(...rows.map(r => r.name.length)));
-    const xs = rows.flatMap(r => [r.lo, r.hi, r.mwp]).filter(v => v > 0);
-    const dom = [Math.pow(10, Math.floor(Math.log10(Math.min(...xs)))), Math.pow(10, Math.ceil(Math.log10(Math.max(...xs))))];
-    const col = d => methodColor(P, d.method);
-    // 1-2-5 per decade, labelled and gridded alike: Plot's default log grid draws every
-    // minor tick, which on four decades is a fence of 36 lines.
-    const ticks = [];
-    for (let e = Math.log10(dom[0]); e <= Math.log10(dom[1]); e++)
-      for (const k of [1, 2, 5]) { const v = k * Math.pow(10, e); if (v >= dom[0] && v <= dom[1]) ticks.push(v); }
-    return Plot.plot({
-      width, height: rows.length * 30 + 50, marginLeft: Math.round(longest * 6.3 + 14), marginRight: 16,
-      marginTop: 8, marginBottom: 36, style: plotStyle(P),
-      ariaLabel: `Point estimates and 90% credible intervals of each Best-estimate component, ${AOI}`,
-      x: {type: "log", domain: dom},
-      y: {domain: rows.map(r => r.name), label: null, tickSize: 0, padding: 0.4,
-          tickFormat: d => trunc(d, maxChars)},
-      color: {type: "identity"},
-      marks: [
-        Plot.gridX(ticks, {stroke: P.hair, strokeOpacity: 1}),
-        // Tick labels drawn as text: on a log scale Plot hands any tickFormat to d3's log
-        // formatter, which blanks every tick whose mantissa is above 2 -- the 5s came out
-        // as empty strings whatever the format function returned.
-        Plot.axisX(ticks, {tickFormat: () => "", label: "MWp (log scale)", labelAnchor: "right",
-          labelOffset: 30}),
-        Plot.text(ticks, {x: d => d, text: compact, frameAnchor: "bottom", dy: 16, fill: P.ink2}),
-        Plot.ruleY([rows[0].name], {stroke: P.hair, strokeWidth: 20, strokeOpacity: 0.6}),
-        Plot.ruleY(rows.filter(r => r.hasCi), {y: "name", x1: "lo", x2: "hi", stroke: col, strokeWidth: 2.5,
-          strokeLinecap: "round"}),
-        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "lo", stroke: col, strokeWidth: 1.5, inset: 7}),
-        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "hi", stroke: col, strokeWidth: 1.5, inset: 7}),
-        Plot.dot(rows, {y: {value: "name", label: "Component"}, x: "mwp", fill: col, r: 5, stroke: P.panel,
-          strokeWidth: 2,
-          channels: {"90% low": {value: "lo", label: "90% low"}, "90% high": {value: "hi", label: "90% high"},
-                     Detail: {value: "label", label: "Detail"}},
-          tip: interactive ? {format: {x: v => `${fmt5(v)} MWp`, y: true, fill: false,
-            "90% low": v => fmt5(v), "90% high": v => fmt5(v), Detail: true}} : undefined}),
-      ],
-    });
+    const W = Math.max(300, width);
+    const ranged = rows.filter(r => r.hasCi && r.mwp > 0);
+    const pcts = ranged.flatMap(r => [uncPct(r.lo, r.mwp), Math.min(UNC_CAP_PCT, uncPct(r.hi, r.mwp))]);
+    let dlo = Math.min(-25, ...pcts), dhi = Math.max(25, ...pcts);
+    const step = dhi - dlo <= 125 ? 25 : dhi - dlo <= 260 ? 50 : 100;
+    dlo = Math.max(-100, Math.floor(dlo / step) * step);
+    dhi = Math.ceil(dhi / step) * step;
+    const mR = Math.ceil(Math.max(...rows.map(r => cuWidth(P, uncRangeText(r), 400)))) + 16;
+    const x = p => 1 + (Math.max(dlo, Math.min(dhi, p)) - dlo) / (dhi - dlo) * (W - mR - 1);
+    const svg = cuSvg(P, W, `90% range of each part of ${AOI}'s Best estimate, as % below and above its own figure`);
+    const grid = el("g", {}), body = el("g", {});
+    svg.appendChild(grid); svg.appendChild(body);
+    const barH = 10;
+    let y = 0;
+    const one = (r, weight) => {
+      const g = el("g", {});
+      const top = y;
+      if (interactive) g.appendChild(el("rect", {class: "hit", x: -4, y: top - 2, width: W + 8, height: 0, rx: 4}));
+      y = cuLabel(g, P, 1, y, r.name, `${fmt(r.mwp)} MWp`, W - 2, weight) + 4;
+      const cy = y + barH / 2;
+      const fill = r.method === "total" ? P.ink2 : methodColor(P, r.method);
+      let end = x(0) + 5;
+      if (r.hasCi){
+        const pl = uncPct(r.lo, r.mwp), ph = uncPct(r.hi, r.mwp);
+        const x0 = x(pl), x1 = x(ph);
+        if (x1 - x0 >= 1) g.appendChild(el("rect", {x: x0, y, width: x1 - x0, height: barH, rx: barH / 2, fill}));
+        if (ph > dhi) g.appendChild(el("path", {d: `M${x1 + 1},${cy - 6}l7,6l-7,6z`, fill}));
+        end = Math.max(end, x1 + (ph > dhi ? 9 : 0));
+      }
+      // the part's own figure: a ring, legible on every method colour and on the bare card
+      g.appendChild(el("circle", {cx: x(0), cy, r: 4.5, fill: P.panel, stroke: P.ink, "stroke-width": 2}));
+      const v = el("text", Object.assign({x: end + 8, y: cy + 4.5, fill: P.ink2,
+        "font-variant-numeric": "tabular-nums"}, cuHalo(P)));
+      v.textContent = uncRangeText(r);
+      g.appendChild(v);
+      y += barH;
+      if (interactive) g.firstChild.setAttribute("height", y - top + 6);
+      const head = r.method === "total" ? "Best estimate" : COMP_METHOD_META[r.method].name;
+      cuHover(g, interactive, `${r.name}: ${fmt(r.mwp)} MWp, 90% range ${uncRangeText(r)}`,
+        `<div class="th">${head}</div>` + row("Part", r.name) + row("MWp", fmt5(r.mwp))
+        + row("90% range", r.hasCi ? `${fmt5(r.lo)} – ${fmt5(r.hi)} MWp` : "fixed, no modelled range")
+        + row("Around the figure", uncRangeText(r)) + `<div class="t-desc">${r.label}</div>`);
+      body.appendChild(g);
+      y += CU.gap;
+    };
+    one(rows[0], 650);
+    y += 10;
+    for (const m of COMP_METHOD_ORDER){
+      const part = rows.filter(r => r.method === m);
+      if (!part.length) continue;
+      y += 6;
+      body.appendChild(el("rect", {x: 1, y: y + 3, width: CU.swatch, height: CU.swatch, rx: 3, fill: methodColor(P, m)}));
+      y = cuLabel(body, P, CU.swatch + 8, y, COMP_METHOD_META[m].name, null, W - CU.swatch - 10, 700) + 4;
+      part.forEach(r => one(r, 400));
+    }
+    // The axis: gridlines behind the rows, the zero line (every part's own figure) stronger.
+    const plotTop = 0, plotBottom = y - CU.gap + 6;
+    for (let p = dlo; p <= dhi + 1e-9; p += step){
+      grid.appendChild(el("line", {x1: x(p), x2: x(p), y1: plotTop, y2: plotBottom,
+        stroke: p === 0 ? P.muted : P.hair, "stroke-width": 1}));
+      const t = el("text", {x: x(p), y: plotBottom + 16, fill: P.ink2, "font-size": 11.5,
+        "text-anchor": p === dlo && x(p) < 20 ? "start" : "middle", "font-variant-numeric": "tabular-nums"});
+      t.textContent = p === 0 ? "0" : signedPct(p);
+      svg.appendChild(t);
+    }
+    const cap = el("text", {x: x(0), y: plotBottom + 33, fill: P.muted, "font-size": 11.5, "text-anchor": "middle"});
+    cap.textContent = "← below · each part's own figure · above →";
+    svg.appendChild(cap);
+    return cuFinish(svg, W, plotBottom + 40);
   }
   function uncCSV(){
-    return [["component", "method", "mwp", "ci90_low", "ci90_high", "description"],
-      uncRows().map(r => [r.name, r.method, r.mwp, r.hasCi ? r.lo : "", r.hasCi ? r.hi : "", r.label])];
+    return [["component", "method", "mwp", "ci90_low", "ci90_high", "description", "ci90_low_pct", "ci90_high_pct"],
+      uncRows().map(r => [r.method === "total" ? r.name : `${COMP_METHOD_META[r.method].name}: ${r.name}`,
+        csvMethod(r.method), r.mwp, r.hasCi ? r.lo : "", r.hasCi ? r.hi : "", r.label,
+        r.hasCi ? +uncPct(r.lo, r.mwp).toFixed(1) : "", r.hasCi ? +uncPct(r.hi, r.mwp).toFixed(1) : ""])];
   }
   function renderUncChrome(){
-    const methods = new Set(uncRows().map(r => r.method));
-    document.getElementById("uncLegend").innerHTML =
-      `<div class="comp-legend-item"><span class="comp-swatch total"></span>Best estimate, total</div>`
-      + COMP_METHOD_ORDER.filter(m => methods.has(m)).map(m =>
-        `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
+    const ci = T.mwp_best_ci;
+    document.getElementById("uncLede").innerHTML = ci
+      ? `With 90% probability the Best estimate lies between <b>${fmt(ci[0])} and ${fmt(ci[1])} MWp</b>: `
+        + `from ${Math.round(-uncPct(ci[0], T.mwp_best))}% below its ${fmt(T.mwp_best)} MWp to `
+        + `${Math.round(uncPct(ci[1], T.mwp_best))}% above it. Each part has its own range, drawn around `
+        + `its own figure so that parts of very different size compare: the wider the bar, the less `
+        + `certain that part.`
+      : `This page carries no interval for its Best estimate.`;
+    // Which error sources the parts share, named only where this page has such parts.
+    const { best } = compRows();
+    const roof = best.some(r => r.placement === "roof");
+    const ground = best.some(r => r.placement === "ground" && r.key !== "osm_unmatched_csp");
+    const shared = [];
+    if (roof) shared.push("one area-to-capacity constant for every rooftop figure");
+    if (ground) shared.push(roof ? "one for every ground-mounted figure"
+      : "one area-to-capacity constant for every ground-mounted figure");
+    if (best.some(r => r.method === "roofclf") && Object.keys(T.uncertainty.coverage_bootstrap || {}).length)
+      shared.push("one re-draw of the calibration areas for every roofclf figure");
+    const list = shared.length > 1 ? shared.slice(0, -1).join(", ") + " and " + shared[shared.length - 1] : shared[0];
+    document.getElementById("uncNote").innerHTML =
+      (list ? `The parts' ranges do not add up to the total's: parts that share a source of error were `
+        + `drawn together (${list}). ` : "")
+      + (best.some(r => !r.ci) ? "A part shown as a ring without a bar is a fixed correction, not a "
+        + "modelled quantity. " : "")
+      + `The ranges cover measured errors only; <i>How confident should you be in this?</i> below `
+      + `lists what they leave out.`;
     document.querySelector("#utable tbody").innerHTML = uncRows().map(r =>
-      `<tr><td>${r.name}</td><td>${fmt5(r.mwp)}</td><td>${r.hasCi ? fmt5(r.lo) : "–"}</td>`
-      + `<td>${r.hasCi ? fmt5(r.hi) : "–"}</td></tr>`).join("");
+      `<tr><td>${r.method === "total" ? "<b>Best estimate</b>" : `${COMP_METHOD_META[r.method].name}: ${r.name}`}</td>`
+      + `<td>${fmt5(r.mwp)}</td><td>${r.hasCi ? fmt5(r.lo) : "–"}</td>`
+      + `<td>${r.hasCi ? fmt5(r.hi) : "–"}</td><td>${uncRangeText(r)}</td></tr>`).join("");
   }
 
   // ── panel-pose survey (ported from pose.py's TEMPLATE) ─────────────────────────
@@ -4587,7 +4754,20 @@ out geom;</div>
   const osmGe = T.osm_n_ge400 || 0, osmLt = T.osm_n_lt400 || 0;
   document.getElementById("kOsm").textContent = fmt(osmGe + osmLt);
   document.getElementById("kOsmSplit").textContent = `${fmt(osmGe)} at ≥400 m², ${fmt(osmLt)} below`;
-  document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+  // Where a rooftop estimate below 400 m2 exists: roofclf's calibrated density range, or the
+  // cells a roof-area estimate covers. With none, there is no range to count cells in: the
+  // tile says so instead of "0" (owner rule: not measured, never 0).
+  if (HAS_SMALL_ROOF) {
+    document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+    if (ROOF_AREA) document.getElementById("kDomainK").innerHTML =
+      "of 0.1&deg; cells with a roof-area estimate below 400&nbsp;m&sup2;";
+  } else {
+    const kd = document.getElementById("kDomain");
+    kd.textContent = "not measured";
+    kd.classList.add("nm");
+    document.getElementById("kDomainK").innerHTML =
+      "rooftop PV below 400&nbsp;m&sup2;: no calibrated estimate in any 0.1&deg; cell yet";
+  }
   // What the installed PV generates per year (`atlas.generation_totals`: each cell's Best
   // times its PVGIS yield). It takes the coverage tile's place (owner, 2026-11-07); the
   // unimaged-cell hatching keeps those counts on the map. In TWh/yr, GWh/yr below 1 TWh.
@@ -4825,15 +5005,15 @@ out geom;</div>
     renderCompositionChrome();
     registerPlot("composition", "compMount", compositionSvg, {
       title: () => `${AOI}: what the Best estimate is made of`,
-      subtitle: () => `Components by method (colour) and placement (hatched = ground-mount), on one MWp axis; `
-        + `the Verified floor below for comparison. ${totalLine()}.`,
+      subtitle: () => `Every part by method (colour) and placement (hatched = ground-mounted) on one MWp scale, `
+        + `with the Verified floor beneath the Best bar for comparison. ${totalLine()}.`,
       csv: compositionCSV,
     });
     renderUncChrome();
-    registerPlot("uncertainty", "uncMount", needsPlot(uncChart), {
-      title: () => `${AOI}: uncertainty of each component of the Best estimate`,
-      subtitle: () => `Point estimate and 90% credible interval per component, log scale. Intervals of components `
-        + `sharing an error source were drawn jointly, so they do not add to the total's.`,
+    registerPlot("uncertainty", "uncMount", uncChart, {
+      title: () => `${AOI}: how sure each part of the Best estimate is`,
+      subtitle: () => `90% credible range of each part, as % below and above that part's own figure. ${totalLine()}. `
+        + `Parts sharing a source of error were drawn together, so their ranges do not add up to the total's.`,
       csv: uncCSV,
     });
   } else {
@@ -5166,8 +5346,13 @@ out geom;</div>
   }
 
   document.getElementById("foot").innerHTML =
-    `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf per-building `
-    + `classifier · ${fmt(T.n_cells)} cells × 0.1° · ${T.kwp_per_m2} kWp/m² of module area · `
+    // Only the instruments this page uses, and no model name for the segmentation (published
+    // atlases run TerraMind or ResNet-50 checkpoints, and the page records neither).
+    [`OpenStreetMap solar pull`, `Sentinel-2 segmentation`,
+      HAS_SMALL_ROOF ? (ROOF_AREA ? `roof area priced against ${SMALL_ROOF.register}`
+        : `roofclf per-building classifier`) : "",
+      (T.small_ground_status || {}).measured ? `farm ground-PV detector` : ""].filter(Boolean).join(" + ")
+    + ` · ${fmt(T.n_cells)} cells × 0.1° · ${T.kwp_per_m2} kWp/m² of module area · `
     + `Sentinel-2 L2A dry-season composites · buildings from VIDA Open Buildings · `
     + `see <a href="https://open-energy-transition.github.io/earthpv/methods/density/" target="_blank" rel="noopener">capacity methodology</a> for full derivations and caveats.<br>`
     + `Contains information &copy; OpenStreetMap contributors, `

@@ -11,6 +11,16 @@
 
 title: Germany
 
+# The rooftop estimate below 400 m2 uses no classifier (2026-09-13, docs/results/germany.md,
+# "What the German atlas now carries"): the roof area of buildings of 200-400 m2, at a kWp per
+# m2 of roof fitted against MaStR (scripts/build_germany_sub400_atlas_inputs.py --method
+# size_band), so the page must not call it roofclf or say it was scored from Sentinel-2.
+small_rooftop:
+  method: roof_area
+  roof_m2: [200, 400]
+  kwp_per_m2: 0.03493
+  register: MaStR
+
 # Silver, not Gold (owner decision 2026-10-22). On files alone Germany derives Gold: it has a
 # calibrated small-installation half. But that half is fitted to the register's municipal
 # totals and its geography does not survive the register's own check (median municipal

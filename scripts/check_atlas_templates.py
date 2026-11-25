@@ -30,6 +30,8 @@ REQUIRED = {
         ("__COMPOSITION_NOTE__", "the per-country composition sentence"),
         ('id="pv"', "the embedded per-cell data the downloads are built from"),
         ("__LAYERS_JSON__", "the per-country extra map layers (configs/atlas/<aoi>.yaml)"),
+        ("__SMALL_ROOF_JSON__", "how the rooftop estimate below 400 m2 is made, so the page "
+                                "names it (configs/atlas/<aoi>.yaml `small_rooftop`)"),
         ('class="dlbar"', "the PNG/SVG/CSV download buttons on each figure"),
         ("__AOI_KEY__", "the key the page fetches its published calibration areas by"),
         ("calib-hit", "the click target that opens a calibration area in JOSM or iD"),

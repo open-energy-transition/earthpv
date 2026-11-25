@@ -153,7 +153,12 @@ CONFIG_DIR = Path("configs/atlas")
 NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
-             "validation", "start_here", "map_view", "quality"}
+             "validation", "start_here", "map_view", "quality", "small_rooftop"}
+# How the rooftop estimate below 400 m2 is made: roofclf's scores (the default), or
+# `roof_area`, the roof area of a building-size band at a constant fitted against a register,
+# with no classifier (Germany since 2026-09-13, docs/results/germany.md).
+SMALL_ROOFTOP_METHODS = ("roofclf", "roof_area")
+_SMALL_ROOFTOP_KEYS = {"method", "roof_m2", "kwp_per_m2", "register"}
 # The checks of an atlas's quality checklist (`earthpv.quality.CHECKS`, same ids), which a
 # config's `quality` block may state where no file records them.
 QUALITY_CHECKS = ("model", "imagery", "precision", "plausibility", "osm", "ground_truth",
@@ -217,6 +222,13 @@ class AtlasConfig:
     map_view: tuple = ()
     # `quality`: (check, status, note) rows the quality checklist takes from the config.
     quality: tuple = ()
+    # `small_rooftop`: how the rooftop estimate below 400 m2 is made. `roof_area` also names
+    # the roof band it prices (m2), its kWp per m2 of roof and the register that constant
+    # was fitted against; the page and the composition note describe the method from these.
+    small_rooftop_method: str = "roofclf"
+    small_rooftop_roof_m2: tuple = ()
+    small_rooftop_kwp_per_m2: float | None = None
+    small_rooftop_register: str = ""
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -239,6 +251,39 @@ def _parse_map_view(aoi: str, raw) -> tuple:
     if not (-180 <= w < e <= 180 and -90 <= s < n <= 90):
         _fail(aoi, f"`map_view` {raw} is not a box: need west < east and south < north")
     return (w, s, e, n)
+
+
+def _parse_small_rooftop(aoi: str, raw) -> dict:
+    """`small_rooftop` as the AtlasConfig fields it fills; roofclf when absent."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        _fail(aoi, "`small_rooftop` must be a mapping")
+    unknown = set(raw) - _SMALL_ROOFTOP_KEYS
+    if unknown:
+        _fail(aoi, f"unknown small_rooftop key(s) {sorted(unknown)}; "
+                   f"expected {sorted(_SMALL_ROOFTOP_KEYS)}")
+    method = raw.get("method", "roofclf")
+    if method not in SMALL_ROOFTOP_METHODS:
+        _fail(aoi, f"`small_rooftop.method` must be one of {list(SMALL_ROOFTOP_METHODS)}")
+    if method == "roofclf":
+        if set(raw) - {"method"}:
+            _fail(aoi, "`small_rooftop` takes `roof_m2`, `kwp_per_m2` and `register` only "
+                       "with `method: roof_area`")
+        return {}
+    band, kwp, register = raw.get("roof_m2"), raw.get("kwp_per_m2"), raw.get("register")
+    if (not isinstance(band, list) or len(band) != 2
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in band)
+            or not 0 <= band[0] < band[1]):
+        _fail(aoi, "`small_rooftop.roof_m2` must be [smallest, largest] roof in m2")
+    if isinstance(kwp, bool) or not isinstance(kwp, (int, float)) or not 0 < kwp < 1:
+        _fail(aoi, "`small_rooftop.kwp_per_m2` must be kWp per m2 of roof, between 0 and 1")
+    if not isinstance(register, str) or not register.strip():
+        _fail(aoi, "`small_rooftop.register` must name the register the constant was fitted on")
+    return {"small_rooftop_method": method,
+            "small_rooftop_roof_m2": (float(band[0]), float(band[1])),
+            "small_rooftop_kwp_per_m2": float(kwp),
+            "small_rooftop_register": register.strip()}
 
 
 def _parse_cities(aoi: str, raw) -> tuple:
@@ -491,5 +536,6 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         start_here=str(raw.get("start_here") or "").strip(),
         map_view=_parse_map_view(aoi, raw.get("map_view")),
         quality=_parse_quality(aoi, raw.get("quality")),
+        **_parse_small_rooftop(aoi, raw.get("small_rooftop")),
         path=path,
     )
