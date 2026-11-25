@@ -342,10 +342,13 @@ IRENA = {
     # Energy Regulator, Chile's CNE, Mexico's SENER/CRE) but are not typed in yet.
     "australia": ("2025", 41065.0, "o"), "chile": ("2025", 12032.0, "o"),
     "mexico": ("2025", 12912.0, "u"),
+    # First iteration (2026-11-25): ESDM's statistics and PLN's rooftop (PLTS Atap) figures
+    # exist but are not typed in yet.
+    "indonesia": ("2025", 1494.0, "u"),
 }
 # AOIs whose own national figures exist but are not in this table yet: the scope says so
 # instead of claiming none was found.
-IRENA_NATIONAL_PENDING = {"australia", "chile", "mexico"}
+IRENA_NATIONAL_PENDING = {"australia", "chile", "mexico", "indonesia"}
 
 
 def irena(year: str, mw: float, flag: str, national_pending: bool = False) -> dict:

@@ -320,6 +320,37 @@
         "blobs": 210
       }
     },
+    "indonesia": {
+      "file": "indonesia_pv_new_leads.geojson",
+      "n": 9400,
+      "size_bytes": 8943760,
+      "osm_as_of": "2026-11-20",
+      "min_distance_m": 100,
+      "made": "2026-11-25",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 100,
+        "review": 99,
+        "no_dem": 5
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 0
+      },
+      "blobs": {
+        "file": "indonesia_pv_blob_leads.geojson",
+        "n": 163,
+        "size_bytes": 1747043,
+        "min_area_m2": 100000.0
+      },
+      "judged_not_pv": {
+        "leads": 0,
+        "blobs": 0
+      }
+    },
     "italy": {
       "file": "italy_pv_new_leads.geojson",
       "n": 6794,

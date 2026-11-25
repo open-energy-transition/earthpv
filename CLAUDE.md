@@ -23,7 +23,7 @@ tolerated. Two detectors:
   floor. It is not optional: Germany's legally complete register (MaStR) puts **65.5% of rooftop
   capacity in installations below 400 m²** (97.2% by count; quote the capacity share).
 
-Twenty-five countries plus Texas and California have a published atlas ("Country runs"; Sweden
+Twenty-six countries plus Texas and California have a published atlas ("Country runs"; Sweden
 was published by a contributor and is not in its table).
 `README.md` has the narrative and headline numbers.
 
@@ -1197,6 +1197,7 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Mexico | `v40r_resnet50_mexico` ep 10 at 0.3 | 12,084.9 / 12,358.4 | first iteration (2026-11-22), reviews open; thin Chihuahua holdout (21 installations) |
 | Chile | `v44r_resnet50_chile` ep 15 at 0.3 | 13,613.7 / 13,901.9 | first iteration (2026-11-22), reviews open; Verified above IRENA's 12,032 MW |
 | Australia | `v28_resnet50_south_africa` (general) at 0.2 | 16,596.1 / 16,818.4 | first iteration (2026-11-22), reviews open; local v46r lost on New South Wales (size split suspect); rooftops unmeasured |
+| Indonesia | `v28_resnet50_south_africa` (general) at 0.98 | 821.9 / 989.5 | first iteration (2026-11-25), reviews open; local v48r lost on East Java; Cirata (floating) priced at the land constant |
 
 Country points still in force (write-ups in `docs/results/<country>.md`):
 - **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
@@ -1265,6 +1266,13 @@ Country points still in force (write-ups in `docs/results/<country>.md`):
   (Geofabrik extracts on moreaidata). Australia's holdout comparison has an implausible size
   split (local v46r finds 99.7% of 250-500 m2 arrays, 0.3% of 500-1,000 m2), unresolved.
   Chile's blobs sit mostly in the northern desert (salt flats, evaporation ponds).
+- **Indonesia** (published 2026-11-25 as a first iteration, before any review): segmentation
+  only, on the general v28 at its matched 0.98 (the localized v48r lost on East Java at pixel
+  precision 0.60). Official figure IRENA 2025 (1,494 MW, `IRENA_NATIONAL_PENDING`: ESDM and
+  PLN's PLTS Atap owed); Ember is **not a ceiling** (51.7 GW of Chinese cells against 5.7 GW of
+  panels: domestic assembly). No `lead_water_screen` (Cirata floating PV); Cirata's outline
+  prices at 92.8 MWp against its 192 MWp rating, since floating plants get the land constant.
+  Equatorial Sumatra is cloudy in every window (Medan, Pekanbaru 4 clear days). Data on /home.
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 

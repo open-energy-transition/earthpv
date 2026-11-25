@@ -1,0 +1,67 @@
+# Indonesia's localized segmentation model (owner, 2026-11-19: every new atlas trains a
+# ResNet, no more TerraMind). The localized-ResNet recipe of configs/terramind_pv_v39r_resnet50_texas.yaml
+# (ResNet-50 pretrained on SSL4EO-S12 by MoCo, plain UNet over all five stages, constant lr
+# 1e-4, patience 8, snapshots), which beat localized TerraMind and v28 zero-shot in Denmark,
+# California and Texas and shipped Nigeria's v45r. Corpus = v28's (v5's + South Africa) plus
+# Indonesia's own chips, as scripts/run_country_compute.sh merges it. Holdout: the AOI's val_tiles.
+data:
+  index_path: data/chips/combined_indonesia/index.parquet
+  batch_size: 8
+  num_workers: 4
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: ssl4eos12_resnet50_sentinel2_all_moco
+    backbone_pretrained: true
+    backbone_model_bands:
+    - BLUE
+    - GREEN
+    - RED
+    - RED_EDGE_1
+    - RED_EDGE_2
+    - RED_EDGE_3
+    - NIR_BROAD
+    - NIR_NARROW
+    - SWIR_1
+    - SWIR_2
+    backbone_out_indices:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    necks: []
+    decoder: UNetDecoder
+    decoder_channels:
+    - 256
+    - 128
+    - 64
+    - 32
+    - 32
+    num_classes: 2
+    rescale: true
+  loss: tversky
+  tversky_args:
+    alpha: 0.3
+    beta: 0.7
+    gamma: 1.0
+  class_weights:
+  - 0.25
+  - 0.75
+  ignore_index: -1
+  lr: 0.0001
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+checkpoint_dir: data/models/v48r_resnet50_indonesia
+patience: 8
+monitor: val/mIoU
+monitor_mode: max
+snapshots:
+  keep_last: 12
+resume: true

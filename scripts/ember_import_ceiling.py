@@ -74,6 +74,11 @@ NOT_A_CEILING = {
     # Ember, 2017-01..2026-08: 36.1 GW of cells from China against 6.2 GW of panels.
     "turkiye": "Turkey assembles most of its own panels: since 2017 China has shipped it about "
                "six times as much capacity in solar cells as in finished panels",
+    # Ember, 2017-01..2026-08: 51.7 GW of cells from China (99% of it since 2024) against
+    # 5.7 GW of panels; IRENA has 1.5 GW installed at the end of 2025.
+    "indonesia": "Indonesia assembles panels of its own: since 2017 China has shipped it about "
+                 "nine times as much capacity in solar cells as in finished panels, nearly all "
+                 "of it since 2024",
 }
 
 

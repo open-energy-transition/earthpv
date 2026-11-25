@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-22'
+retrieved: '2026-11-25'
 aois:
   australia:
   - id: irena
@@ -238,6 +238,17 @@ aois:
       Sikkim: 7.6
       Nāgāland: 3.3
       Meghālaya: 4.3
+  indonesia:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 1494.0
+    scope: National on- and off-grid solar PV at the end of 2025, from an unofficial source (industry
+      or press). The country's own national figures are not on this page yet.
   italy:
   - id: gse
     name: GSE

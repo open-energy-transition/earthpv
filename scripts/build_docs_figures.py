@@ -3072,6 +3072,10 @@ INTERACTIVE = [
     ("results/mexico_pv_evidence_atlas.html", "mexico_pv_evidence_atlas.html"),
     ("results/chile_pv_evidence_atlas.html", "chile_pv_evidence_atlas.html"),
     ("results/australia_pv_evidence_atlas.html", "australia_pv_evidence_atlas.html"),
+    # Indonesia (2026-11-25), a first iteration published before its reviews: segmentation
+    # only, on the general v28 at 0.98 (its localized v48r lost on East Java).
+    # docs/results/indonesia.md explains.
+    ("results/indonesia_pv_evidence_atlas.html", "indonesia_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

@@ -20,6 +20,7 @@ hide:
   <a href="../atlas-denmark/">Denmark</a>
   <a href="../atlas-egypt/">Egypt</a>
   <span aria-current="page">India</span>
+  <a href="../atlas-indonesia/">Indonesia</a>
   <a href="../atlas-italy/">Italy</a>
   <a href="../atlas-luxembourg/">Luxembourg</a>
   <a href="../atlas-mexico/">Mexico</a>

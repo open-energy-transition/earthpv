@@ -1,0 +1,85 @@
+# Indonesia's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Indonesia, national: the 34 provinces of geoBoundaries IDN ADM1, which predate the 2022 split
+# of Papua into six (its ADM2 regencies are current enough to place everything). Same starting
+# condition as Chile and Australia -- no calibration quadrats, no record-level register used --
+# so the builder's default no-ground-truth text stands. The segmentation is a ResNet-50
+# localized on Indonesia's own OpenStreetMap labels and ships only if it beats v28 on a
+# held-out region; it lost on East Java, so the general model (v28) ships
+# (results/indonesia_checkpoint_decision.json).
+#
+# Published 2026-11-25 as a first iteration: the blob and large-installation reviews are
+# still open. Numbers belong in docs/results/indonesia.md; nothing here quotes a figure a
+# rebuild could change (Cirata's rating is the plant's, not the page's). The map frames the
+# whole archipelago (no map_view): Sabang to Merauke is 46 degrees of longitude, and every
+# province is populated.
+
+title: Indonesia
+
+cities:
+  - [Jakarta, 106.845, -6.208]
+  - [Surabaya, 112.752, -7.257]
+  - [Bandung, 107.619, -6.917]
+  - [Medan, 98.672, 3.595]
+  - [Semarang, 110.420, -6.966]
+  - [Palembang, 104.756, -2.976]
+  - [Makassar, 119.432, -5.148]
+  - [Batam, 104.031, 1.130]
+  - [Pekanbaru, 101.448, 0.507]
+  - [Bandar Lampung, 105.263, -5.429]
+  - [Padang, 100.354, -0.947]
+  - [Denpasar, 115.216, -8.670]
+  - [Yogyakarta, 110.365, -7.796]
+  - [Samarinda, 117.153, -0.502]
+  - [Banjarmasin, 114.590, -3.317]
+  - [Pontianak, 109.333, -0.026]
+  - [Manado, 124.842, 1.475]
+  - [Kupang, 123.607, -10.178]
+  - [Ambon, 128.181, -3.695]
+  - [Jayapura, 140.718, -2.533]
+  - [Banda Aceh, 95.323, 5.548]
+
+confidence:
+  caveats:
+    - >-
+      <b>This page misses most of Indonesia's rooftop solar.</b> Most rooftop systems on
+      homes, shops and offices are far smaller than the roughly 400 m&sup2; the model can
+      see. Everything on the map is either hand-mapped in OpenStreetMap or an array the
+      segmentation model outlined directly. The thousands of small rooftop arrays mappers
+      have drawn in OpenStreetMap do count, but no area has been mapped panel by panel to
+      calibrate a rooftop classifier against, so the rest below 400 m&sup2; is not measured.
+    - >-
+      <b>This page runs on the general model.</b> A model trained on Indonesia's own
+      OpenStreetMap labels found fewer of the held-out installations in East Java than the
+      general model did, so the general model draws the outlines here.
+    - >-
+      <b>Most of Best is hand-mapped, and parks are priced by area.</b> OpenStreetMap mappers
+      have outlined most of Indonesia's solar parks as whole sites. A site's capacity is its
+      area times a fixed density of panels per square metre of site, measured on parks on
+      land elsewhere, so a single park can read high or low. Floating plants read low: the
+      outline of Cirata, the floating plant on a reservoir in West Java, prices at about
+      half of its rated 192 MWp.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar.
+      Indonesia has over a hundred of them waiting, most of their area in Jambi and Riau on
+      Sumatra, and over a thousand large model outlines below that size. None has been
+      checked yet, so real parks among them are missing from Best, and many of the outlines
+      on the map there may not be solar.
+    - >-
+      <b>Clouds thin the imagery near the equator.</b> The images were taken in the dry
+      season of Java, Bali, Nusa Tenggara and Sulawesi, but central and northern Sumatra and
+      the Riau Islands stay cloudy all year: around Medan, Pekanbaru and Batam only a handful
+      of clear days went into each picture, so arrays there are more easily missed.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A
+      park built in a forest or on a plantation that nobody has mapped yet falls outside
+      both rules and is not on this page. Cells that were not imaged are hatched on the map.
+    - >-
+      <b>The plausibility check flags provinces, most of them in Sumatra and Kalimantan.</b>
+      It compares each province's ground-mounted capacity with its rooftop capacity. In
+      several of them the model's ground-mounted outlines add up to several times its rooftop
+      figure, though none adds much to the national total. Open-pit mines and cleared land
+      can look like panels from orbit, and none of these outlines has been checked by a
+      person yet.

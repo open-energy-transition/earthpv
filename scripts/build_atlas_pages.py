@@ -73,6 +73,7 @@ ATLASES = [
     ("atlas-denmark", "Denmark", "denmark_pv_evidence_atlas.html", None),
     ("atlas-egypt", "Egypt", "egypt_pv_evidence_atlas.html", None),
     ("atlas-india", "India", "india_pv_evidence_atlas.html", None),
+    ("atlas-indonesia", "Indonesia", "indonesia_pv_evidence_atlas.html", None),
     ("atlas-italy", "Italy", "italy_pv_evidence_atlas.html", None),
     ("atlas-luxembourg", "Luxembourg", "luxembourg_pv_evidence_atlas.html", None),
     ("atlas-mexico", "Mexico", "mexico_pv_evidence_atlas.html", None),

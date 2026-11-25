@@ -62,6 +62,14 @@ aois:
     mwp: 95060.1
     ceiling: false
     why_not: India makes a large share of its own panels and restricts Chinese ones for public projects
+  indonesia:
+    ember_area: Indonesia
+    from: 2017-01
+    to: 2026-08
+    mwp: 5704.9
+    ceiling: false
+    why_not: 'Indonesia assembles panels of its own: since 2017 China has shipped it about nine times
+      as much capacity in solar cells as in finished panels, nearly all of it since 2024'
   italy:
     ember_area: Italy
     from: 2017-01

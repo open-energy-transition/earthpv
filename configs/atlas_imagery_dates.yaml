@@ -129,6 +129,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1277
     made: '2026-10-29'
+  indonesia:
+    median: '2026-08-04'
+    p25: '2026-06-26'
+    p75: '2026-09-03'
+    first: '2026-04-01'
+    last: '2026-10-31'
+    windows:
+    - 2026-04-01:2026-10-31
+    n_cells: 7423
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1391
+    made: '2026-11-25'
   italy:
     median: '2026-08-02'
     p25: '2026-07-09'
