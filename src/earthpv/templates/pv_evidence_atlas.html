@@ -3717,11 +3717,16 @@ out geom;</div>
     const headH = headLines.length ? HEAD_Y0 + headLines.length * 13 + 6 : 0;
     const fadeBins = sizeFadeBins();
     const totalOf = bin => totals.find(d => d.bin === bin).total;
-    // Room above the tallest bar that fades, so the fade is never cut off.
-    const yTop = Math.max(0, ...totals.map(d => d.total), ...fadeBins.map(b => totalOf(b) * 1.2));
+    const height = (rotate ? 360 : 330) + headH, marginTop = 18 + headH,
+      marginBottom = rotate ? 76 : 46;
+    const FADE_H = 46, Q_H = 20;
+    // Room above the tallest bar that fades for the fade and the question mark over it,
+    // in pixels of the plot's own height, so neither is ever cut off.
+    const fadeRoom = (FADE_H + Q_H) / (height - marginTop - marginBottom);
+    const yTop = Math.max(0, ...totals.map(d => d.total),
+      ...fadeBins.map(b => totalOf(b) / (1 - fadeRoom)));
     // Rooftop's colour where rooftop is missing, ground-mount's where only that is.
     const fadeColour = HAS_SMALL_ROOF ? P.accentDim : P.accent;
-    const FADE_H = 46;
     const fades = (index, scales) => {
       const g = el("g", {"aria-label": "bars below 400 m² continue by an unknown amount"});
       const defs = el("defs", {});
@@ -3736,6 +3741,11 @@ out geom;</div>
         // One pixel into the bar, so no seam shows at its measured top.
         g.appendChild(el("rect", {x: scales.x(bin), y: yBar - FADE_H, width: scales.x.bandwidth(),
           height: FADE_H + 1, fill: `url(#${id})`}));
+        // Where the fade runs out: how much more there is, nobody measured.
+        const q = el("text", {x: scales.x(bin) + scales.x.bandwidth() / 2, y: yBar - FADE_H - 5,
+          "text-anchor": "middle", fill: P.muted, "font-size": 16, "font-weight": 700});
+        q.textContent = "?";
+        g.appendChild(q);
       });
       return g;
     };
@@ -3752,8 +3762,7 @@ out geom;</div>
       return g;
     };
     return Plot.plot({
-      width, height: (rotate ? 360 : 330) + headH, marginLeft: mL, marginRight: mR,
-      marginTop: 18 + headH, marginBottom: rotate ? 76 : 46,
+      width, height, marginLeft: mL, marginRight: mR, marginTop, marginBottom,
       style: plotStyle(P), ariaLabel: `PV capacity by installation size, rooftop and ground-mount, ${AOI}`
         + (head.length ? `. ${head[0]}.` : ""),
       x: {domain, label: "Installation size", padding, tickSize: 0,
