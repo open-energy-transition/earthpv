@@ -229,6 +229,11 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     that gives the &ge; 400 m&sup2;-only atlas, which is still this workflow's output
     for that country -- steps 10-14 need quadrats to exist first.
 
+    Calibration areas are mapped in OpenStreetMap ([Map a calibration
+    area](contribute/calibration-areas.md)), the recommended way. Where the free imagery is
+    too old or too soft to map from, [Calibration data from bought
+    imagery](bought-imagery-calibration.md) describes the alternative.
+
 === "10. Roof classifier"
 
     The **< 400 m&sup2; half** of the main workflow: a per-building "does this roof

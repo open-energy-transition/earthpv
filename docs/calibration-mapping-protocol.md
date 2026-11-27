@@ -212,6 +212,14 @@ same box, and the set of regions that survives is a silent survivorship filter o
 wherever the imagery happened to be good, which is exactly the bias the stratification
 above exists to prevent.
 
+**Last resort: buy imagery for the region alone.** Mapping in OpenStreetMap stays the
+recommended way, because the result is easier to maintain there. Where the free layers predate
+the composite and no newer free imagery exists, archive imagery captured inside the compose
+window can be bought for just the calibration areas, from UP42 at about €20 per km² at 30 cm,
+under a licence that lets EarthPV use the result and combine it with other data.
+[Calibration data from bought imagery](bought-imagery-calibration.md) costs it for Nigeria's
+ten candidates (about €500 to €900 for one capture of each) and lists what would change.
+
 ### Two siting constraints that cost this project a region
 
 **Do not site a region to include ground-mount.** Kalat Rural was placed deliberately to

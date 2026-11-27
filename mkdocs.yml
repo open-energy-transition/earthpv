@@ -220,6 +220,7 @@ nav:
       - Pretrained model: pretrained-model.md
       - Tutorial: tutorial.md
       - Setup New Country: reproduce.md
+      - Calibration data from bought imagery: bought-imagery-calibration.md
       - Country data registry: data-registry.md
   # History last: what was tried, and what is still undecided. Every page under
   # Experiments carries a status banner, because several describe a pipeline that has

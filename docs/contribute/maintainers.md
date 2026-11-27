@@ -47,6 +47,11 @@ first, and fails on a name that is neither a candidate nor a registered area.
 `docs/assets/labels/calibration_areas/` that the atlas fetches at run time, so new
 candidates need no atlas rebuild. Re-run it after anything below changes an area.
 
+A box dropped for old Esri imagery is lost to the OpenStreetMap way, which stays the
+recommended one. Where it matters, for instance when too many draws of a country fail the gate,
+[Calibration data from bought imagery](../bought-imagery-calibration.md) describes buying
+imagery for that box alone and what its licence has to allow.
+
 ## Register a mapped area
 
 A mapper's report names the area. Run the command from its atlas popup (**Register it**),
