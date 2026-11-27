@@ -41,6 +41,10 @@ def main() -> int:
     problems: list[str] = []
     for page in sorted(DOCS.rglob("*.md")):
         parts = page.relative_to(DOCS).parts[:-1]
+        # The Material blog plugin serves a post at /blog/<slug>/ (mkdocs.yml:
+        # post_url_format "{slug}"), not at its source path under blog/posts/.
+        if parts[:2] == ("blog", "posts"):
+            parts = ("blog",)
         depth = len(parts) + (0 if page.name == "index.md" else 1)
         prefix = "../" * depth
         for lineno, line in enumerate(page.read_text().splitlines(), 1):
