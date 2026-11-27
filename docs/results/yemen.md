@@ -423,6 +423,24 @@ Not yet used by any figure on this page. With it registered the star would have 
 on by the default order, to Adh Dhihar; the owner removed Yemen's star instead
 (`start_here: none`, 2026-10-31).
 
+**Three more areas (registered 2026-11-27, Rule-1).** Declared finished by the owner that
+day; every pull confirmed by a second Overpass query and against OSM's live API.
+
+- **Mayfa'ah, Shabwah** (`mayfa_ah_s2_calib_2km`, Esri Vivid imagery of 2025-07-26): the
+  sampled box of density stratum 2 (25 to 39 buildings per km&sup2;), the last of the eight
+  `calib-candidates` drew on 2026-10-20, so every stratum of equal building share now has
+  its box. 134 VIDA buildings; 3 installations, all ground, 950 m<sup>2</sup> in all.
+- **Sanhan, Sana'a** (`sana_a_city_outskirts_sanhan_wa_bani_bahlul_pv8_calib_1km`, Esri
+  Vivid Mosaic Metro imagery of 2025-12-13): a PV-rich town box on the city's outskirts,
+  1,424 VIDA buildings. 33 installations, 24 rooftop and 9 ground, median
+  114 m<sup>2</sup>, 27 below 400 m<sup>2</sup> and 16 below 100 m<sup>2</sup>.
+- **Dawran Anis, Dhamar (farm)** (`dawran_anis_f5_farm_calib_3km`, Esri Vivid imagery of
+  2025-09-22, region Highlands): a sampled 3 km farm box, mapped 2026-10-29 (changeset
+  191179183). 5 ground arrays, 997 m<sup>2</sup>, median 113 m<sup>2</sup>.
+
+Ma'in and As Sab'in (the PV-rich box and the first random town box) hold only their large
+arrays so far and are not registered until their roofs are mapped.
+
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
 buildings, where the most roof area sits in buildings of 1,000 m<sup>2</sup> or more), so a
@@ -463,7 +481,8 @@ Zaydiah, Dhamar city, Bani Hushaysh, Al Marawi'ah and Bayt al Faqih, 821 to 2,47
 each, under Esri imagery from 2025-04 to 2025-12. No classifier score went into the draw, so
 mapped complete they say what Yemen's towns hold, with or without solar; 60 of the 74
 buildings drawn lay outside towns, so about one Yemeni building in five sits in one. They
-lead the atlas's mapping order.
+lead the atlas's mapping order. As Sab'in's large arrays are mapped (2026-10-31); its roofs
+are not yet.
 
 **The PV-rich town boxes come after them.** Yafi' and Qa'tabah town added
 63 PV roofs to the 132 a `roofclf` fit saw in building boxes (Al Wehdah, Sayun, Bani Al

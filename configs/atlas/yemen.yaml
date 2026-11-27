@@ -50,6 +50,14 @@ calibration_boxes:
   # 2026-10-30: swept by the owner 2026-10-31 against Esri Vivid imagery of 2025-03-05, no PV
   # found, ground or rooftop; OSM's live API and Overpass agree (a confirmed zero).
   - {name: "Ghayl Bawazir, Hadhramaut (no PV)", stem: ghayl_bawazir_fa1_calib_1km, status: rule1, used: false}
+  # The last of the eight sampled boxes (stratum 2), mapped by the owner 2026-10-25 and
+  # declared finished 2026-11-27, Esri Vivid imagery of 2025-07-26. With it every density
+  # stratum has its box.
+  - {name: "Mayfa'ah, Shabwah", stem: mayfa_ah_s2_calib_2km, status: rule1, used: false}
+  # A PV-rich town box on Sana'a's outskirts: finished by the owner 2026-11-27 against Esri
+  # Vivid Mosaic Metro imagery of 2025-12-13. Ma'in and As Sab'in (PV-rich and random town)
+  # hold only their large arrays so far and are not registered.
+  - {name: "Sanhan, Sana'a", stem: sana_a_city_outskirts_sanhan_wa_bani_bahlul_pv8_calib_1km, status: rule1, used: false}
   - {name: "Huth, 'Amran (farm)", stem: amran_huth_farm_calib_129p53km2, status: rule1}
   - {name: "At Tuhayta, Tihama (farm)", stem: tihama_tuhayta_farm_calib_104p25km2, status: rule1}
   - {name: "Al Jarrahi west, Tihama (farm)", stem: tihama_jarrahi_west_farm_calib_53p29km2, status: rule1}
@@ -64,6 +72,9 @@ calibration_boxes:
   - {name: "As Saiyani, Ibb (farm, no PV)", stem: as_saiyani_f4_farm_calib_3km, status: rule1, used: false}
   - {name: "As Sawd, 'Amran (farm)", stem: as_sawd_f1_farm_calib_3km, status: rule1, used: false}
   - {name: "Az Zaydiah, Al Hudaydah (farm)", stem: az_zaydiah_f6_farm_calib_3km, status: rule1, used: false}
+  # Mapped by the owner 2026-10-29 (changeset 191179183) and declared finished 2026-11-27,
+  # Esri Vivid imagery of 2025-09-22; boundary `region` Highlands.
+  - {name: "Dawran Anis, Dhamar (farm)", stem: dawran_anis_f5_farm_calib_3km, status: rule1, used: false}
 
 # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when the farm areas went in:
 # they calibrate farm ground PV only, and household rooftops below 400 m2 are still unmeasured.
@@ -99,13 +110,13 @@ confidence:
     resemble these areas (lowland plain for Tihama, highland for 'Amran). In Tihama its
     range comes from re-drawing the six areas there, so it says how much the result moves
     between farms of that plain, not across Yemen; 'Amran, a single area, carries a stated
-    factor of two either way. Seven more farm areas, 3 km boxes drawn at random from
-    Yemen's farmland, have been mapped since; the figure does not use them yet. Twelve
+    factor of two either way. Eight more farm areas, 3 km boxes drawn at random from
+    Yemen's farmland, have been mapped since; the figure does not use them yet. Fourteen
     further areas were mapped house by house for a rooftop classifier, which does not yet
     rank Yemen's roofs well enough to publish; no figure uses them.</p>
   caveats:
     - >-
-      <b>Small household systems on roofs are not on this page.</b> Twelve areas of Yemen
+      <b>Small household systems on roofs are not on this page.</b> Fourteen areas of Yemen
       have been mapped house by house. A per-building rooftop classifier fitted to the first
       nine ranks Yemen's roofs too unreliably to publish: in one of the four of them with
       panels it does worse than chance, and its capacity scaling would rest on two areas.
