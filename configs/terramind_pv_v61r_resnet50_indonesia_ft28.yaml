@@ -1,0 +1,75 @@
+# Indonesia: v28 fine-tuned on Indonesia's chips and land-cover hard negatives (v61r, 2026-11-26).
+#
+# The whole-cell comparison of 2026-11-26 (results/indonesia_model_comparison/) found the
+# localized v48r WORSE than the general v28 everywhere: 2.7x the unmapped objects per 1,000 km2
+# over 500 random cells at its own 0.3 (1.5x at 0.98), and lower recall on the East Java
+# holdout. v48r's recipe (constant lr, best epoch 7 of 16, no EMA) is weaker than v28's (42
+# epochs, warmup-cosine, EMA). So this run starts FROM v28's weights (`init_from`, its EMA
+# average) and fine-tunes on v60r's corpus (configs/terramind_pv_v60r_resnet50_indonesia_hn.yaml:
+# v28's corpus as replay, Indonesia's chips on the 2026-11-26 labels x8, 2,423 land-cover hard
+# negatives), on v28's recipe at a fine-tuning scale: warmup to 3e-5, cosine to 1e-6 over six
+# epochs (2,172 optimizer steps an epoch), EMA at 0.999 (0.9999 would average over the whole
+# run). Holdout: East Java, as v48r and v60r; chips reaching the random sample are kept out.
+
+data:
+  index_path: data/chips/combined_indonesia_v60r/index.parquet
+  batch_size: 8
+  num_workers: 4
+  jitter: {p: 0.5, gain: 0.07, offset: 0.01}
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # ResNet-50 pretrained by MoCo on SSL4EO-S12 (13-band Sentinel-2 L1C / 10000, so our
+    # DN / 10000 input is on its scale). TerraTorch subsets conv1 to our 10 bands.
+    backbone: ssl4eos12_resnet50_sentinel2_all_moco
+    backbone_pretrained: true
+    backbone_model_bands: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+                           NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    # All five stages: 64 ch at 20 m (conv1), 256 at 40 m, 512 at 80 m, 1024 at 160 m,
+    # 2048 at 320 m. A plain UNet over them ends at 10 m.
+    backbone_out_indices: [0, 1, 2, 3, 4]
+    necks: []
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 3.0e-5
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  # Stepped per optimizer step: 34,748 train rows / batch 8 / accumulation 2 = 2,172 an epoch.
+  scheduler: SequentialLR
+  scheduler_hparams:
+    interval: step
+    schedulers:
+      LinearLR: {start_factor: 0.1, end_factor: 1.0, total_iters: 300}
+      CosineAnnealingLR: {T_max: 12732, eta_min: 1.0e-6}
+    milestones: [300]
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 6
+  accumulate_grad_batches: 2
+
+seed: 1
+early_stopping: false
+ema: {decay: 0.999}
+init_from: data/models/v28_resnet50_south_africa/last.ckpt
+snapshots: {keep_last: 12}
+
+# -> /home/tobi/earthpv_data/models/v61r_resnet50_indonesia_ft28
+checkpoint_dir: data/models/v61r_resnet50_indonesia_ft28
+# Selects the two informational top-k checkpoints only; the model is last.ckpt.
+monitor: val/mIoU
+monitor_mode: max
+
+# Training is protected against systemd-oomd restarts: continue from this run's own last.ckpt.
+resume: true

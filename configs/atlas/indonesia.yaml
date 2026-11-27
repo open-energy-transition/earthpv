@@ -3,13 +3,15 @@
 # Indonesia, national: the 34 provinces of geoBoundaries IDN ADM1, which predate the 2022 split
 # of Papua into six (its ADM2 regencies are current enough to place everything). Same starting
 # condition as Chile and Australia -- no calibration quadrats, no record-level register used --
-# so the builder's default no-ground-truth text stands. The segmentation is a ResNet-50
-# localized on Indonesia's own OpenStreetMap labels and ships only if it beats v28 on a
-# held-out region; it lost on East Java, so the general model (v28) ships
-# (results/indonesia_checkpoint_decision.json).
+# so the builder's default no-ground-truth text stands. The segmentation is v61r (2026-11-26):
+# the general v28 fine-tuned on Indonesia's own OpenStreetMap labels, including the
+# installations the owner mapped from the first leads, and on hard negatives from oil palm
+# estates and mines, at 0.95 (results/indonesia_checkpoint_decision.json; docs/experiments.md,
+# "Indonesia's false leads"). The first atlas (2026-11-25) ran v28 itself at 0.98, after the
+# localized v48r lost on East Java.
 #
-# Published 2026-11-25 as a first iteration: the blob and large-installation reviews are
-# still open. Numbers belong in docs/results/indonesia.md; nothing here quotes a figure a
+# Published 2026-11-25 as a first iteration and rebuilt on v61r 2026-11-27: the blob and
+# large-installation reviews are still open. Numbers belong in docs/results/indonesia.md; nothing here quotes a figure a
 # rebuild could change (Cirata's rating is the plant's, not the page's). The map frames the
 # whole archipelago (no map_view): Sabang to Merauke is 46 degrees of longitude, and every
 # province is populated.
@@ -49,9 +51,11 @@ confidence:
       have drawn in OpenStreetMap do count, but no area has been mapped panel by panel to
       calibrate a rooftop classifier against, so the rest below 400 m&sup2; is not measured.
     - >-
-      <b>This page runs on the general model.</b> A model trained on Indonesia's own
-      OpenStreetMap labels found fewer of the held-out installations in East Java than the
-      general model did, so the general model draws the outlines here.
+      <b>This page runs on a model fine-tuned for Indonesia.</b> The general model was
+      retrained on Indonesia's own OpenStreetMap labels, including installations mapped from
+      the first atlas's leads, and shown the oil palm estates and mines it had mistaken for
+      solar. Over whole held-out areas it flags far less ground that is not solar and finds
+      more of East Java's mapped installations than the general model.
     - >-
       <b>Most of Best is hand-mapped, and parks are priced by area.</b> OpenStreetMap mappers
       have outlined most of Indonesia's solar parks as whole sites. A site's capacity is its
@@ -62,10 +66,10 @@ confidence:
     - >-
       <b>Very large model outlines count only once checked.</b> A model outline above
       100,000 m&sup2; counts only when it is mapped or a person has judged it solar.
-      Indonesia has over a hundred of them waiting, most of their area in Jambi and Riau on
-      Sumatra, and over a thousand large model outlines below that size. None has been
-      checked yet, so real parks among them are missing from Best, and many of the outlines
-      on the map there may not be solar.
+      Indonesia has about twenty of them waiting, scattered across the islands with the most
+      area in Riau, and a few hundred large model outlines below that size. None has been
+      checked yet, so real parks among them are missing from Best, and some of the outlines
+      on the map may not be solar.
     - >-
       <b>Clouds thin the imagery near the equator.</b> The images were taken in the dry
       season of Java, Bali, Nusa Tenggara and Sulawesi, but central and northern Sumatra and

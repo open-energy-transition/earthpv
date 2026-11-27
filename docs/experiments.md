@@ -3415,6 +3415,87 @@ runner `scripts/run_floor100_v24.sh`. Checkpoints in
 `results/small_array_eval/v24_floor100_vs_v16/` and
 `results/backbone_compare/v24_floor100_vs_v16/`.
 
+### Indonesia's false leads: land-cover hard negatives and a fine-tuned v28 (2026-11-26)
+
+Indonesia's atlas (2026-11-25) runs the general v28 at 0.98: the localized v48r lost the ship
+rule on East Java's holdout chips. The owner checked the leads and found most of them false, on
+mines, ponds, clearings and above all oil palm, and mapped the real ones in OpenStreetMap: 441
+installations in nine changesets, 420 of them within 100 m of a lead, 160 in East Java.
+
+**The ship rule could not see this.** East Java's holdout was 47 chips, all cut around mapped
+PV (16 with none). The leads sit elsewhere: 60% touch no building, and they pile up in
+Kalimantan and Sumatra (coal, tin, oil palm, peat), where almost nothing is mapped and v48r's
+577 Indonesian chips held almost no background. The low-confidence lead screen (an open-ground
+lead whose peak is below 0.9) cannot fire at a 0.98 threshold, so it dropped nothing.
+
+**Over whole cells the localized model was worse, not better.** `scripts/sheet_scan.py curve`
+over three samples of 0.1 degree cells: all 377 East Java holdout cells, 500 random cells away
+from every Indonesian training chip, and the 100 cells with the most no-building leads (chosen
+on v28's false alarms, so biased against it). Unmapped objects (>= 4 px, touching no mapped
+solar of the 2026-11-26 labels) per 1,000 km<sup>2</sup> and recall of mapped installations:
+
+| | v28 at 0.98 | v48r at 0.3 | v48r at 0.98 | v61r at 0.3 | v61r at 0.95 | v61r at 0.98 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Random cells: unmapped objects | 8.0 | 21.5 | 12.1 | 8.5 | 3.8 | 3.3 |
+| Random cells: area flagged (km<sup>2</sup>, of 61,673) | 17.8 | 97.1 | 57.5 | 2.0 | 1.1 | 0.9 |
+| East Java: unmapped objects | 7.2 | 7.9 | 4.1 | 15.1 | 7.7 | 6.5 |
+| East Java: rooftop 400-5,000 m<sup>2</sup> (n = 107) | 0.748 | 0.654 | 0.598 | 0.813 (+7/-0) | 0.776 (+3/-0) | 0.776 (+3/-0) |
+| East Java: ground >= 400 m<sup>2</sup> (n = 150) | 0.960 | 0.880 | 0.827 | 0.987 (+4/-0) | 0.980 (+3/-0) | 0.973 (+2/-0) |
+| Lead-dense cells: unmapped objects (in-sample for v61r) | 117 | 187 | 134 | 47 | 25 | 21 |
+
+v48r's recipe (constant learning rate, best epoch 7 of 16, no EMA) is weaker than v28's (42
+epochs, warmup-cosine, EMA), and its 577 chips repeated 8x did not teach it Indonesia's
+countryside.
+
+**Which land covers mark a false lead.** Share of each population on a class:
+
+| | Oil palm (Descals et al. 2024, 10 m) | Mines (Tang & Werner 2023) | Forest lost since 2021 (Hansen GFC 2025) |
+| --- | --- | --- | --- |
+| v28's 9,400 leads | 10.6% | 4.3% | 11.4% |
+| The owner's 441 installations | 0% | 0% | 2.9% |
+| PV mapped in OSM before | 0.9% | 0.3% | 14.9% |
+
+Oil palm and mines separate false leads from real ones; a recent clearing does not (solar farms
+are built on cleared land), so clearings enter only as random landscape negatives. OSM's own
+mine, aquaculture, oil palm and clearing polygons touch only 442 leads. Of v28's unmapped
+objects over the random cells, 20% lie on oil palm, 2% on mines, 6% on clearings and 72%
+elsewhere: by ESA WorldCover mostly tree cover (39%: pulpwood and rubber plantations are not
+in the palm map) and grassland (25%).
+
+**The hard negatives** (`scripts/landcover_hard_negatives.py`): chips centred on v28's
+candidates on oil palm (>= 25% of the outline) or a mine, more than 200 m from mapped solar of
+the refreshed labels (1,132 after a 500 m declutter), plus random points in oil palm, mines,
+OSM aquaculture and recent clearings (999) and over nine lead-heavy provinces (298): 2,422
+chips, masks burned from the refreshed labels. Indonesia's own chips were re-cut on those
+labels (678 train, 129 holdout); chips reaching the random sample were kept out of training,
+the lead-dense cells were not.
+
+**v61r: v28 fine-tuned** (`init_from` in `train.py`, `configs/terramind_pv_v61r_resnet50_indonesia_ft28.yaml`):
+v28's weights, its recipe at fine-tuning scale (warmup to 3e-5, cosine over six epochs, EMA
+0.999), on v28's corpus as replay plus Indonesia's chips x8 and the hard negatives. It wins
+the ship rule on the 47 holdout chips (recall >= 500 m<sup>2</sup> 0.897 against 0.862 at
+matched pixel precision 0.556, `results/indonesia_v61r_checkpoint_decision.json`) and every
+whole-cell measure above. On the random cells its oil palm false objects fall from 97 to 21
+(0.3) or 11 (0.98), mines from 11 to 7 or 2, and what remains is small: about 3,000 m<sup>2</sup>
+per object against 35,000 for v28. At 0.95 it matches v28's false-alarm rate in East Java with
+more recall and halves it on random land.
+
+**Shipped (owner, 2026-11-26): v61r at 0.95**, the whole-cell threshold, not the pick's 0.3.
+The atlas was rebuilt on it 2026-11-27 with the 2026-11-26 labels: Verified 1,003.7 / Best
+1,125.5 MWp (90% 1,048 to 1,290), against 821.9 / 989.5 for v28 on the 2026-11-20 labels;
+Verified rose with the owner's mapping, not the model. The queues shrank with the false
+leads: 20 blobs (3.9 km<sup>2</sup>) and 358 large leads wait for review, against 163 (164.8
+km<sup>2</sup>) and 1,193, and the lead file holds 4,989 leads against 9,400. The plausibility
+check calls 12 of 34 provinces suspect, none failing (nine before). v60r (v48r's recipe plus
+the same corpus) finished training and was not scored. A localized model fine-tuned from v28
+may be the better default for new countries than training from the SSL4EO weights; untested
+elsewhere. `init_from` and v28's recipe (EMA, warmup-cosine) are `train.py` options not yet
+on main.
+
+Code: `scripts/osm_changeset_labels.py` (labels from changesets when Overpass is down),
+`scripts/landcover_hard_negatives.py`, `scripts/indonesia_false_objects.py`. Results:
+`results/indonesia_model_comparison/`, `data/sheet_scan/indonesia/`.
+
 ## The partial result worth watching
 
 ### Time-series step detection below the floor

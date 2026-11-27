@@ -1212,7 +1212,7 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Mexico | `v40r_resnet50_mexico` ep 10 at 0.3 | 12,084.9 / 12,358.4 | first iteration (2026-11-22), reviews open; thin Chihuahua holdout (21 installations) |
 | Chile | `v44r_resnet50_chile` ep 15 at 0.3 | 13,613.7 / 13,901.9 | first iteration (2026-11-22), reviews open; Verified above IRENA's 12,032 MW |
 | Australia | `v28_resnet50_south_africa` (general) at 0.2 | 16,596.1 / 16,818.4 | first iteration (2026-11-22), reviews open; local v46r lost on New South Wales (size split suspect); rooftops unmeasured |
-| Indonesia | `v28_resnet50_south_africa` (general) at 0.98 | 821.9 / 989.5 | first iteration (2026-11-25), reviews open; local v48r lost on East Java; Cirata (floating) priced at the land constant |
+| Indonesia | `v61r_resnet50_indonesia_ft28` ep 5 at 0.95 | 1,003.7 / 1,125.5 | v28 fine-tuned on Indonesia's chips and land-cover hard negatives (2026-11-27), reviews open; Cirata (floating) priced at the land constant |
 
 Country points still in force (write-ups in `docs/results/<country>.md`):
 - **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
@@ -1281,9 +1281,11 @@ Country points still in force (write-ups in `docs/results/<country>.md`):
   (Geofabrik extracts on moreaidata). Australia's holdout comparison has an implausible size
   split (local v46r finds 99.7% of 250-500 m2 arrays, 0.3% of 500-1,000 m2), unresolved.
   Chile's blobs sit mostly in the northern desert (salt flats, evaporation ponds).
-- **Indonesia** (published 2026-11-25 as a first iteration, before any review): segmentation
-  only, on the general v28 at its matched 0.98 (the localized v48r lost on East Java at pixel
-  precision 0.60). Official figure IRENA 2025 (1,494 MW, `IRENA_NATIONAL_PENDING`: ESDM and
+- **Indonesia** (published 2026-11-25 as a first iteration, before any review; rebuilt
+  2026-11-27): segmentation only, on v61r at 0.95, v28 fine-tuned (`init_from`) on Indonesia's
+  chips and land-cover hard negatives (oil palm, mines; `scripts/landcover_hard_negatives.py`),
+  shipped by the owner on whole-cell false objects and recall (docs/experiments.md,
+  "Indonesia's false leads"); the localized v48r had lost on East Java. Official figure IRENA 2025 (1,494 MW, `IRENA_NATIONAL_PENDING`: ESDM and
   PLN's PLTS Atap owed); Ember is **not a ceiling** (51.7 GW of Chinese cells against 5.7 GW of
   panels: domestic assembly). No `lead_water_screen` (Cirata floating PV); Cirata's outline
   prices at 92.8 MWp against its 192 MWp rating, since floating plants get the land constant.
