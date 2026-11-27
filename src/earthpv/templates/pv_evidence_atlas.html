@@ -3748,7 +3748,9 @@ out geom;</div>
     if (!sizeMissing().length) return [];
     return sizeDomain().filter(b => b !== SIZE_UNSPLIT && binBelow400(b));
   }
-  // The chart's own header: what is missing, then what the bars hold.
+  // What is missing below 400 m², then what the bars there hold: read by the chart's aria
+  // label, an exported figure's subtitle and the size table's note (no longer drawn inside
+  // the chart, owner 2026-11-27).
   function sizeHeadLines(){
     const missing = sizeMissing();
     if (!missing.length) return [];
@@ -3757,16 +3759,6 @@ out geom;</div>
     return [`Below 400 m²: ${missing.join(" and ")} PV not measured`,
       `${what} only OSM-mapped installations and arrays the model outlines`
       + (sizeFadeBins().length ? "; a fading top means more is missing, by an unknown amount" : "")];
-  }
-  function wrapWords(text, maxChars){
-    const out = [];
-    let line = "";
-    for (const w of text.split(" ")){
-      if (line && (line + " " + w).length > maxChars){ out.push(line); line = w; }
-      else line = line ? line + " " + w : w;
-    }
-    if (line) out.push(line);
-    return out;
   }
   function sizeRows(){
     const rows = [];
@@ -3811,17 +3803,15 @@ out geom;</div>
     // Bin labels run up to ~11 characters (the unsplit column's in two lines); below ~78 px
     // a column they would collide, so they turn instead.
     const rotate = band < 50;
-    // The header over the band sits in the top margin, below the y axis's label and above
-    // every bar and total label; on a narrow chart it may run past the band.
+    // No header inside the chart (owner, 2026-11-27): what is not measured below 400 m² is
+    // said by the legend, the "?" over each fading bar and the paragraph under the chart;
+    // the aria label and an exported figure's subtitle still carry the sentence.
     const small = domain.filter(binBelow400);
     const head = small.length ? sizeHeadLines() : [];
-    const maxChars = Math.max(16, Math.floor((width - mL - mR - 34) / 6.7));
-    const headLines = head.flatMap((t, i) => wrapWords(t, maxChars).map(text => ({text, strong: i === 0})));
-    const HEAD_Y0 = 18;
-    const headH = headLines.length ? HEAD_Y0 + headLines.length * 17 + 10 : 0;
     const fadeBins = sizeFadeBins();
     const totalOf = bin => totals.find(d => d.bin === bin).total;
-    const height = (rotate ? 360 : 330) + headH, marginTop = 18 + headH,
+    // The top margin holds the y axis's label clear of the highest tick.
+    const height = rotate ? 372 : 342, marginTop = 30,
       marginBottom = rotate ? 76 : 46;
     const FADE_H = 46, Q_H = 20;
     // Room above the tallest bar that fades for the fade and the question mark over it,
@@ -3853,18 +3843,6 @@ out geom;</div>
       });
       return g;
     };
-    const caption = (index, scales) => {
-      const g = el("g", {"aria-label": "not measured below 400 m²"});
-      const x = scales.x, x0 = x(small[0]) - (x.step() - x.bandwidth()) / 2;
-      headLines.forEach((l, i) => {
-        // Plot sets text-anchor: middle on its svg; the header reads from the first bin's edge.
-        const t = el("text", {x: x0 + 2, y: HEAD_Y0 + 10 + i * 17, "text-anchor": "start",
-          fill: l.strong ? P.ink2 : P.muted, "font-weight": l.strong ? 600 : null});
-        t.textContent = l.text;
-        g.appendChild(t);
-      });
-      return g;
-    };
     return Plot.plot({
       width, height, marginLeft: mL, marginRight: mR, marginTop, marginBottom,
       style: plotStyle(P), ariaLabel: `PV capacity by installation size, rooftop and ground-mount, ${AOI}`
@@ -3876,7 +3854,6 @@ out geom;</div>
       color: {domain: parts, range: [P.accent, `url(#${sid})`]},
       marks: [
         hatchDefs(sid, P.accentDim, "rgba(0,0,0,0.38)", -45),
-        headLines.length ? caption : null,
         Plot.gridY({stroke: P.hair, strokeOpacity: 1}),
         fadeBins.length ? fades : null,
         Plot.barY(rows, Plot.stackY({x: "bin", y: "mwp", fill: "part", order: parts,
