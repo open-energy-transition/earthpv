@@ -25,9 +25,65 @@
       integrity="sha384-uTttxo/aOKbdE5RlD/SPzSDoDmNvGlUYPjONi2MN/b7c9HPSvW07OIuyP7uL6jxK" crossorigin="anonymous">
 
 <style>
+  /* Type (owner, 2026-11-27: "professional, natural and scientific", easier to read, less
+     technical). Two faces of one family: Source Serif 4 is the atlas's voice (title, section
+     titles, the large numbers, longer explanations), Source Sans 3 the voice of data and
+     interface (captions, labels, legends, tables, chart text). Both SIL OFL 1.1, variable,
+     from the same CDN as the map and chart libraries (no Google Fonts request; mkdocs.yml
+     sets `font: false` for that reason), pinned to an exact version, split by unicode-range
+     so a page fetches only the Latin, Latin Extended or Vietnamese files its text needs.
+     Offline the stacks fall back to Georgia and the system sans. Monospace is left to code,
+     and the map card (title, toolbar, legend), its tooltip and popups keep
+     --font-display / --font-mono exactly as they were (owner: the map is not touched). */
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-latin-opsz-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-latin-ext-opsz-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-vietnamese-opsz-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-latin-opsz-italic.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-latin-ext-opsz-italic.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Serif 4 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-serif-4@5.2.8/files/source-serif-4-vietnamese-opsz-italic.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-latin-wght-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-latin-ext-wght-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: normal; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-vietnamese-wght-normal.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-latin-wght-italic.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-latin-ext-wght-italic.woff2) format("woff2-variations"); }
+  @font-face { font-family: "Source Sans 3 Atlas"; font-style: italic; font-weight: 200 900;
+    font-display: swap; unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+    src: url(https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.8/files/source-sans-3-vietnamese-wght-italic.woff2) format("woff2-variations"); }
+
   :root {
     --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --font-serif: "Source Serif 4 Atlas", "Source Serif 4", "Iowan Old Style", "Sitka Text",
+      Georgia, serif;
+    --font-text: "Source Sans 3 Atlas", "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    /* Spacing on an 8 px scale, and a reading measure for prose. */
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+    --sp-7: 48px; --sp-8: 72px;
+    --measure: 68ch;
+    /* Colour means data: links read as ink, underlined in the accent. */
+    --link-line: color-mix(in srgb, var(--accent) 65%, transparent);
 
     /* dark = the primary "night lights" world */
     --page: #100d09;
@@ -109,15 +165,15 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--page); color: var(--ink);
-    font-family: var(--font-display);
-    -webkit-font-smoothing: antialiased; line-height: 1.5;
+    font-family: var(--font-text); font-size: 16px; font-kerning: normal;
+    font-optical-sizing: auto; -webkit-font-smoothing: antialiased; line-height: 1.6;
   }
   /* The page runs to 1920 px on a wide screen (owner, 2026-11-13): the map with the size
      chart beside it at the top, and below it sections side by side in pairs (`.pair`) where
      each still gets about 600 px, stacked as before where not. */
   .wrap { max-width: 1920px; margin: 0 auto; padding: clamp(16px, 3.5vw, 48px); }
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
-    gap: 44px 22px; align-items: start; margin-top: 44px; }
+    gap: var(--sp-8) var(--sp-6); align-items: start; margin-top: var(--sp-8); }
   .pair > .sec { margin-top: 0; }
   .pair[hidden] { display: none; }
   /* The national comparison beside the provincial one, the download files side by side, and
@@ -136,34 +192,42 @@
     text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
   }
   h1 {
-    font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
-    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
+    font-family: var(--font-serif); font-size: clamp(36px, 4.8vw, 64px); line-height: 1.02;
+    margin: 0; font-weight: 600; letter-spacing: -0.018em; text-wrap: balance; max-width: 20ch;
   }
-  .comp-legend-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+  .comp-legend-size { font-family: var(--font-text); font-size: 13px; color: var(--muted);
     margin-left: 6px; white-space: nowrap; }
   /* ── section scaffolding ─────────────────────────────────────────── */
-  .sec { margin-top: 44px; }
+  /* Each section opens on a hairline, a small-caps kicker and a serif title. */
+  .sec { margin-top: var(--sp-8); }
   .sec-head { display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-  .sec-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--accent); }
-  .sec-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; }
-  .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+    gap: 12px; margin-bottom: var(--sp-5); flex-wrap: wrap;
+    border-top: 1px solid var(--hair); padding-top: var(--sp-4); }
+  .sec-label { font-family: var(--font-text); font-size: 15px; font-weight: 600;
+    font-variant-caps: all-small-caps; letter-spacing: 0.09em; color: var(--muted); }
+  .sec-title { font-family: var(--font-serif); font-size: clamp(25px, 2.2vw, 32px); font-weight: 500;
+    line-height: 1.18; letter-spacing: -0.012em; margin: var(--sp-1) 0 0; text-wrap: balance; }
+  .sec-sub { font-family: var(--font-text); font-size: 14px; color: var(--muted); }
+  .sec-head a { color: var(--ink-2); font-size: 14px; text-decoration-color: var(--link-line);
+    text-underline-offset: 3px; }
 
   /* ── kpi strip ───────────────────────────────────────────────────── */
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 26px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
-  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
-    padding: 15px 16px; box-shadow: var(--shadow); }
-  .kpi .v { font-size: 25px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent); }
-  .kpi .v small { font-size: 0.52em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 12px;
+    padding: 20px 22px 22px; }
+  .kpi .v { font-family: var(--font-serif); font-size: 36px; font-weight: 500; line-height: 1.05;
+    letter-spacing: -0.015em; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+  .kpi .v small { font-family: var(--font-text); font-size: 15px; font-weight: 500;
+    color: var(--muted); margin-left: 6px; letter-spacing: 0; }
   /* A figure the page cannot give reads as a statement, not as a zero (as on the tiles). */
-  .kpi .v.nm { font-size: 17px; font-weight: 650; color: var(--muted); padding-top: 6px; }
-  .kpi .r { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 4px;
-    font-variant-numeric: tabular-nums; }
-  .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
-    text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+  .kpi .v.nm { font-size: 22px; font-style: italic; font-weight: 400; color: var(--muted);
+    padding-top: 6px; }
+  .kpi .r { font-family: var(--font-text); font-size: 14px; color: var(--muted);
+    margin-top: var(--sp-2); font-variant-numeric: tabular-nums; }
+  .kpi .k { font-family: var(--font-text); font-size: 14.5px; color: var(--ink-2);
+    margin-top: var(--sp-3); line-height: 1.45; }
 
   .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 22px;
     align-items: start; margin-top: 16px; }
@@ -172,22 +236,24 @@
   /* ── headline: the total and how old the imagery is, above the map ───────────── */
   /* Each figure is a label, a value and a line beneath it; the date's box is as tall as
      the total's, so the two labels, values and lines each share a row. */
-  #capacity { margin-top: 30px; }
-  .headline { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 44px;
-    margin: 0 4px 18px; }
+  #capacity { margin-top: var(--sp-6); }
+  .headline { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-5) var(--sp-8);
+    margin: 0 4px var(--sp-6); }
   .hl-stat .hero-label { margin: 0 0 8px; }
-  .hl-stat .hero-ci, .hl-stat .hero-freshness { margin-top: 8px; }
+  .hl-stat .hero-ci, .hl-stat .hero-freshness { margin-top: 10px; }
   /* The total's scope beside its label, where nothing below 400 m2 is measured (owner,
      2026-11-14). Not uppercased: "M²" would misread. */
-  .hero-scope { display: inline-block; margin-left: 10px; padding: 1px 7px; border-radius: 4px;
-    border: 1px solid var(--accent-dim); color: var(--accent); font-size: 11px;
+  .hero-scope { display: inline-block; margin-left: 10px; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--accent-dim); color: var(--accent); font-size: 12.5px;
     letter-spacing: 0.02em; text-transform: none; white-space: nowrap; cursor: help;
     vertical-align: 1px; }
   .hero-scope[hidden] { display: none; }
-  .hl-img { padding-left: 44px; border-left: 1px solid var(--card-ring); }
-  .hl-date { height: clamp(34px, 5.13vw, 51px); display: flex; align-items: flex-end;
-    font-size: clamp(24px, 3.4vw, 36px); font-weight: 760; letter-spacing: -0.02em;
-    line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .hl-img { padding-left: var(--sp-8); border-left: 1px solid var(--card-ring); }
+  /* As tall as .hero-num's line, so the two values share a baseline row. */
+  .hl-date { height: clamp(48px, 6vw, 80px); display: flex; align-items: flex-end;
+    font-family: var(--font-serif); font-size: clamp(32px, 3.9vw, 52px); font-weight: 500;
+    letter-spacing: -0.015em; line-height: 1; color: var(--ink);
+    font-variant-numeric: lining-nums tabular-nums; }
   /* Where the two may wrap onto two rows, the rule between them would hang on its own. */
   @media (max-width: 1100px) { .hl-img { padding-left: 0; border-left: 0; } }
   /* The map, and beside it the same total by installation size (owner, 2026-11-13: the map
@@ -195,13 +261,13 @@
   .grid.top { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); margin-top: 0; }
   .grid.top.solo { grid-template-columns: minmax(0, 1fr); }
   @media (max-width: 900px) { .grid.top { grid-template-columns: minmax(0, 1fr); } }
-  .size-col > .card + .card { margin-top: 14px; }
+  .size-col > .card + .card { margin-top: var(--sp-4); }
   /* Under the map: the KPI boxes beside the provinces, on the same two columns (owner,
      2026-11-13, in place of the description and its tiles). */
   .grid.under { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start;
-    margin-top: 22px; }
+    margin-top: var(--sp-5); }
   @media (max-width: 900px) { .grid.under { grid-template-columns: minmax(0, 1fr); } }
-  .under .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
+  .under .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; gap: var(--sp-4); }
   @media (max-width: 520px) { .under .kpis { grid-template-columns: minmax(0, 1fr); } }
   .under .rank { margin-top: 0; }
 
@@ -210,6 +276,10 @@
     box-shadow: var(--shadow); border: 1px solid var(--card-ring);
   }
   .map-card { padding: 14px; position: relative; }
+  .card:not(.map-card) { border-radius: 12px; padding: var(--sp-5) 28px; box-shadow: none; }
+  /* The map is not part of the 2026-11-27 type change (owner): its card, its tooltip, its
+     popups and its add-a-layer dialog keep the faces and line height they had. */
+  .map-card, .tip, dialog.dlg { font-family: var(--font-display); line-height: 1.5; }
 
   .map-head, .fig-head { display: flex; justify-content: space-between; align-items: baseline;
     gap: 12px; margin: 4px 6px 12px; flex-wrap: wrap; }
@@ -217,6 +287,13 @@
   .map-title { font-weight: 640; font-size: 15px; }
   .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
     letter-spacing: 0.02em; }
+  /* A chart's title and subtitle outside the map card: serif title, plain sentence beneath. */
+  .card:not(.map-card) .fig-head { margin: 0 0 var(--sp-4); gap: var(--sp-3) var(--sp-4); }
+  .card:not(.map-card) .map-title, .rank h3 { font-family: var(--font-serif); font-weight: 600;
+    font-size: 19px; line-height: 1.3; letter-spacing: -0.004em; }
+  .card:not(.map-card) .map-sub { font-family: var(--font-text); font-size: 14px; letter-spacing: 0;
+    margin-top: var(--sp-1); line-height: 1.45; }
+  .card:not(.map-card) .map-sub::first-letter { text-transform: uppercase; }
 
   /* ── map toolbar: the one row of controls that scopes the map below it ───── */
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
@@ -255,6 +332,13 @@
     padding: 4px 8px; cursor: pointer; }
   .dlbar button:hover { background: var(--hair); border-color: var(--prov-stroke); }
   .dlbar button[disabled] { opacity: 0.5; cursor: progress; }
+  :is(.card:not(.map-card), .pose-native) .dlbar { gap: 2px; }
+  :is(.card:not(.map-card), .pose-native) .dlbar .dl-k { font-family: var(--font-text); font-size: 12.5px; }
+  :is(.card:not(.map-card), .pose-native) .dlbar button { font: 600 12.5px var(--font-text);
+    letter-spacing: 0.02em; color: var(--muted); background: transparent;
+    border-color: transparent; padding: 3px 7px; }
+  :is(.card:not(.map-card), .pose-native) .dlbar button:hover { color: var(--ink);
+    background: var(--hair); border-color: transparent; }
 
   /* Layers popover */
   .pop-wrap { position: relative; }
@@ -436,42 +520,51 @@
   .ap-start { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 6px;
     font: 600 10.5px var(--font-mono); letter-spacing: 0.04em; color: var(--accent); }
 
-  .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
-    line-height: 0.95; color: var(--accent); }
-  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); letter-spacing: 0;
-    margin-left: 6px; }
-  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
-  .hero-ci { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); margin-top: 7px;
+  .hero-num { font-family: var(--font-serif); font-size: clamp(48px, 6vw, 80px); font-weight: 500;
+    letter-spacing: -0.025em; line-height: 1; color: var(--accent);
+    font-variant-numeric: lining-nums tabular-nums; }
+  .hero-unit { font-family: var(--font-text); font-size: 0.26em; font-weight: 500; color: var(--ink-2);
+    letter-spacing: 0; margin-left: 10px; }
+  .hero-label { font-family: var(--font-text); font-size: 15px; font-weight: 500;
+    letter-spacing: 0.005em; color: var(--ink-2); margin-top: 0; }
+  .hero-ci { font-family: var(--font-text); font-size: 15px; color: var(--ink-2); margin-top: 10px;
     font-variant-numeric: tabular-nums; }
   /* How old is this: the Sentinel-2 composite window the model actually read, and when
      this specific page was last built -- two different ages, so two different numbers. */
-  .hero-freshness { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
-    margin-top: 6px; font-variant-numeric: tabular-nums; }
-  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
-  .hero-desc b { color: var(--ink); font-weight: 660; }
-  .hero-desc a { color: var(--accent); }
+  .hero-freshness { font-family: var(--font-text); font-size: 14px; color: var(--muted);
+    margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .hero-desc { margin-top: 10px; font-size: 15.5px; line-height: 1.6; color: var(--ink-2);
+    max-width: var(--measure); }
+  .hero-desc b { color: var(--ink); font-weight: 600; }
+  /* Links in prose read as ink with an accent underline, so colour stays with the data. */
+  :is(.hero-desc, .ref-lede, .ref-src, .xbody, .qa-foot, .dl-note, .foot) a {
+    color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px; text-decoration-color: var(--link-line); }
+  :is(.hero-desc, .ref-lede, .ref-src, .xbody, .qa-foot, .dl-note, .foot) a:hover {
+    text-decoration-color: var(--accent); }
 
-  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--sp-3); margin-top: var(--sp-4); }
   /* The hero tiles are every addend of Best: model >=400m2, rooftop <400m2, farm ground
      <400m2 (since 2026-10-24) and the OSM contribution -- four tiles that sum exactly to
      the headline number above them. */
   /* A field the page cannot fill reads as a statement, not as a zero. */
-  .tile .v.nm { font-size: 14px; font-weight: 600; color: var(--muted); padding-top: 7px; }
-  .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
+  .tile .v.nm { font-size: 20px; font-style: italic; font-weight: 400; color: var(--muted);
+    padding-top: 4px; }
+  .tile { background: var(--panel-2); border-radius: 10px; padding: 16px 18px;
     border: 1px solid var(--card-ring); }
-  .tile .v { font-size: 22px; font-weight: 740; letter-spacing: -0.01em; }
-  .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .tile .v { font-family: var(--font-serif); font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+    font-variant-numeric: lining-nums tabular-nums; }
+  .tile .k { font-family: var(--font-text); font-size: 14px; color: var(--ink-2); margin-top: var(--sp-1); }
 
   /* ── composition by method. Colour is the METHOD everywhere on this page: OSM teal,
      segmentation blue, roofclf amber, farm ground-PV green -- the
      map's OSM rings and the uncertainty chart use the same four. Hatching is ground-mount,
      everywhere. ── */
-  .comp-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 6px 12px; }
-  .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
-    font-size: 11px; color: var(--ink-2); }
-  .comp-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+  .comp-legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); margin: 0 0 var(--sp-4); }
+  .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-text);
+    font-size: 14px; color: var(--ink-2); }
+  .comp-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; display: inline-block; }
   .comp-swatch.osm { background: var(--domain); }
   .comp-swatch.seg { background: var(--large); }
   .comp-swatch.roofclf { background: var(--accent); }
@@ -490,18 +583,17 @@
      (customs imports) rather than a count of what is installed. */
   .comp-swatch.ref-atlas { background: var(--accent); }
   .comp-swatch.ref-official { background: var(--ref); }
-  .ref-lede { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; margin: 2px 0 12px; max-width: 72ch; }
-  .ref-lede b { color: var(--ink); font-weight: 650; }
-  .ref-src { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+  .ref-lede { font-size: 15.5px; color: var(--ink-2); line-height: 1.6; margin: 2px 0 var(--sp-4);
+    max-width: var(--measure); }
+  .ref-lede b { color: var(--ink); font-weight: 600; }
+  .ref-src { margin: 8px 0 0; padding-left: 18px; font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
   .ref-src li { margin: 6px 0; }
   .ref-src b { color: var(--ink); }
-  .ref-src a { color: var(--accent); }
   .ref-pick[hidden] { display: none; }
-  .ref-pick { display: inline-flex; align-items: center; gap: 8px; margin: 2px 6px 10px;
-    font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+  .ref-pick { display: inline-flex; align-items: center; gap: 8px; margin: 2px 0 var(--sp-3);
+    font-family: var(--font-text); font-size: 14px; color: var(--ink-2); }
   .ref-pick select { font: inherit; color: var(--ink); background: var(--panel-2);
     border: 1px solid var(--hair); border-radius: 6px; padding: 3px 6px; }
-  .ref-lede a { color: var(--accent); }
   /* A part of the capacity and uncertainty charts: the whole row (name and bar) is the hover
      target, so a part too small to see still answers. */
   .comp-seg-g { cursor: pointer; outline: none; }
@@ -512,13 +604,15 @@
 
   /* ── charts drawn by Observable Plot ───────────────────────────────── */
   .chart-card { padding: 14px 18px; position: relative; }
-  .plot-host { --plot-background: var(--panel); position: relative; min-height: 40px; }
+  .card.chart-card:not(.map-card) { padding: 22px 28px 20px; }
+  .plot-host { --plot-background: var(--panel); position: relative; min-height: 40px;
+    font-family: var(--font-text); }
   .plot-host svg { display: block; overflow: visible; max-width: 100%; height: auto; }
   .plot-host [aria-label="tip"] { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); }
-  .chart-fallback { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+  .chart-fallback { font-family: var(--font-text); font-size: 14px; color: var(--muted);
     padding: 18px 4px; }
-  .chart-legend { display: flex; align-items: center; gap: 8px 16px; margin: 4px 6px 10px;
-    flex-wrap: wrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  .chart-legend { display: flex; align-items: center; gap: var(--sp-2) var(--sp-5); margin: 0 0 var(--sp-3);
+    flex-wrap: wrap; font-family: var(--font-text); font-size: 14px; color: var(--ink-2); }
   .chart-legend .lk { display: flex; align-items: center; gap: 6px; }
   .chart-legend .lk[hidden] { display: none; }
 
@@ -528,46 +622,50 @@
   /* `display: flex` would otherwise show a card the page left `hidden` (a country with no
      polygons release showed an empty one). */
   .dl-item[hidden] { display: none; }
-  .dl-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
-    padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--card-ring);
-    border-radius: 10px; }
+  .dl-item { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-5);
+    padding: 18px 22px; background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 12px; }
   .dl-main { min-width: 0; }
-  .dl-name { font-weight: 640; font-size: 13.5px; }
-  .dl-note { font-size: 12px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+  .dl-name { font-family: var(--font-serif); font-weight: 600; font-size: 18px; line-height: 1.3; }
+  .dl-note { font-size: 14.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.55; }
   .dl-link { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-  .dl-link a { color: var(--accent); font-family: var(--font-mono); font-size: 12px;
-    font-weight: 650; text-decoration: none; white-space: nowrap; }
-  .dl-link a:hover { text-decoration: underline; }
-  .dl-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .dl-link a { color: var(--ink); font-family: var(--font-text); font-size: 14.5px;
+    font-weight: 600; white-space: nowrap; text-decoration: underline;
+    text-decoration-color: var(--link-line); text-underline-offset: 3px; }
+  .dl-link a:hover { text-decoration-color: var(--accent); }
+  .dl-size { font-family: var(--font-text); font-size: 13px; color: var(--muted); }
   /* Mapping leads: a release file linked from the page (scripts/release_leads.py). */
   .leads-item { margin-bottom: 14px; }
-  .leads-item .dl-note a { color: var(--accent); }
   @media (max-width: 560px) {
     .leads-item { flex-direction: column; }
     .leads-item .dl-link { align-items: flex-start; }
   }
-  .dl-query-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
-    text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .dl-query-label { font-family: var(--font-text); font-size: 13.5px; font-weight: 600;
+    color: var(--muted); margin: 18px 0 8px; }
+  /* The per-cell download block (the builder's download section) brings its own style after
+     this one; `.wrap` outranks it. */
+  .wrap .dl-btn { font-family: var(--font-text); font-size: 14.5px; font-weight: 600; }
   .dl-query { background: var(--panel-2); border: 1px solid var(--card-ring); border-radius: 8px;
     padding: 12px 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2);
     overflow-x: auto; white-space: pre; line-height: 1.5; }
 
   .rank { margin-top: 4px; }
-  .prov-more { margin-top: 6px; background: none; border: 0; padding: 4px 2px; cursor: pointer;
-    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--accent); }
-  .prov-more:hover { text-decoration: underline; }
-  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+  /* "Show more" controls and table toggles: sentence case, in ink. */
+  .prov-more { margin-top: var(--sp-2); background: none; border: 0; padding: 4px 2px; cursor: pointer;
+    font-family: var(--font-text); font-size: 14.5px; font-weight: 600; color: var(--ink-2); }
+  .prov-more:hover { color: var(--ink); text-decoration: underline; }
+  .rank h3 { margin: 2px 2px 12px; }
 
-  details.tablewrap { margin-top: 14px; }
-  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px;
-    letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
-  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+  details.tablewrap { margin-top: var(--sp-4); }
+  details.tablewrap summary { font-family: var(--font-text); font-size: 14.5px; font-weight: 600;
+    color: var(--ink-2); cursor: pointer; }
+  details.tablewrap summary:hover { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin-top: var(--sp-3); font-size: 14px; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--hair);
     font-variant-numeric: tabular-nums; }
   th:first-child, td:first-child { text-align: left; }
-  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted);
-    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+  th { font-family: var(--font-text); font-weight: 600; color: var(--muted);
+    font-size: 13px; vertical-align: bottom; }
 
   .tip { position: fixed; pointer-events: none; z-index: 40; opacity: 0;
     transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
@@ -603,8 +701,8 @@
      every class is `.pose-*`, and even the bare `svg text` rule the standalone page uses
      is scoped to this section only. ── */
   .pose-native {
-    font-family: Iowan Old Style, Sitka Text, Georgia, "Noto Serif", serif;
-    font-size: 16px; line-height: 1.55; color: var(--pose-ink);
+    font-family: var(--font-serif);
+    font-size: 16.5px; line-height: 1.6; color: var(--pose-ink);
     --pose-bg: #f1ebdd; --pose-bg-panel: #faf6ec; --pose-bg-chart: #f3ecdb;
     --pose-ink: #2a2216; --pose-ink-dim: #5f5540; --pose-ink-faint: #857a61;
     --pose-rule: #cfc0a5; --pose-accent-sun: #c25e12; --pose-accent-glint: #1f9b8a;
@@ -632,22 +730,21 @@
     --pose-excluded: #e6dcc7; --pose-excluded-line: #c3b492;
     --pose-card-shadow: 0 1px 2px rgba(80,55,15,0.07);
   }
-  .pose-native .pose-mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code",
-    "Roboto Mono", Consolas, monospace; }
+  .pose-native .pose-mono { font-family: var(--font-text); font-variant-numeric: tabular-nums; }
   .pose-native .pose-grid { display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
   @media (max-width: 860px) { .pose-native .pose-grid { grid-template-columns: minmax(0, 1fr); } }
   .pose-native .pose-panel { background: var(--pose-bg-panel); border: 1px solid var(--pose-rule);
-    border-radius: 10px; box-shadow: var(--pose-card-shadow); }
+    border-radius: 12px; }
   .pose-native .pose-chart-panel { padding: 18px 18px 14px; }
   .pose-native .pose-chart-head { display: flex; justify-content: space-between;
     align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 8px; }
-  .pose-native .pose-chart-title { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); }
-  .pose-native .pose-chart-n { font-size: 12px; color: var(--pose-ink-faint); }
+  .pose-native .pose-chart-title { font-family: var(--font-text); font-size: 15px; font-weight: 600;
+    font-variant-caps: all-small-caps; letter-spacing: 0.08em; color: var(--pose-ink-dim); }
+  .pose-native .pose-chart-n { font-size: 13px; color: var(--pose-ink-faint); }
   #pose-polar-wrap { position: relative; width: 100%; }
   .pose-native .pose-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 6px;
-    padding-top: 14px; border-top: 1px solid var(--pose-rule); font-size: 12.5px;
+    padding-top: 14px; border-top: 1px solid var(--pose-rule); font-family: var(--font-text); font-size: 14px;
     color: var(--pose-ink-dim); }
   .pose-native .pose-legend-item { display: flex; align-items: center; gap: 7px; }
   .pose-native .pose-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block;
@@ -666,27 +763,28 @@
   .pose-native .pose-tooltip b { font-weight: 600; }
   .pose-native .pose-sidebar { display: flex; flex-direction: column; gap: 14px; }
   .pose-native .pose-stat-big { padding: 16px 18px; }
-  .pose-native .pose-num { font-size: 30px; font-weight: 600;
-    line-height: 1; color: var(--pose-ink); }
+  .pose-native .pose-num { font-size: 36px; font-weight: 500;
+    line-height: 1; color: var(--pose-ink); font-variant-numeric: lining-nums; }
   .pose-native .pose-num small { font-size: 15px; font-weight: 400; color: var(--pose-ink-dim); }
-  .pose-native .pose-num-label { font-size: 12.5px; color: var(--pose-ink-dim); margin-top: 6px; }
+  .pose-native .pose-num-label { font-family: var(--font-text); font-size: 14px; color: var(--pose-ink-dim);
+    margin-top: 6px; }
   .pose-native .pose-stat-card { padding: 14px 18px; }
   .pose-native .pose-stat-row { display: flex; justify-content: space-between;
     align-items: baseline; gap: 12px; padding: 6px 0; }
   .pose-native .pose-stat-row + .pose-stat-row { border-top: 1px dashed var(--pose-rule); }
-  .pose-native .pose-stat-label { font-size: 12.5px; color: var(--pose-ink-dim); }
-  .pose-native .pose-stat-val { font-size: 14.5px; font-variant-numeric: tabular-nums;
+  .pose-native .pose-stat-label { font-family: var(--font-text); font-size: 14px; color: var(--pose-ink-dim); }
+  .pose-native .pose-stat-val { font-family: var(--font-text); font-size: 15px; font-variant-numeric: tabular-nums;
     white-space: nowrap; color: var(--pose-ink); }
   .pose-native .pose-callout { padding: 16px 18px; border-left: 3px solid var(--pose-accent-sun); }
-  .pose-native .pose-callout-h { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); margin: 0 0 10px; font-family: inherit; }
-  .pose-native .pose-callout p { margin: 0 0 10px; font-size: 14px; }
+  .pose-native .pose-callout-h { font-size: 15px; font-weight: 600; font-variant-caps: all-small-caps;
+    letter-spacing: 0.08em; color: var(--pose-ink-dim); margin: 0 0 10px; font-family: var(--font-text); }
+  .pose-native .pose-callout p { margin: 0 0 10px; font-size: 16px; }
   .pose-native .pose-callout p:last-child { margin-bottom: 0; }
   .pose-native .pose-fig { font-weight: 600; color: var(--pose-ink); }
   .pose-native svg text { fill: var(--pose-ink-dim); }
-  .pose-native .pose-footnote { margin-top: 16px; font-size: 12px; color: var(--pose-ink-faint);
-    line-height: 1.6; }
-  .pose-native .dlbar { font-family: var(--font-display); }
+  .pose-native .pose-footnote { margin-top: 16px; font-family: var(--font-text); font-size: 13.5px;
+    color: var(--pose-ink-faint); line-height: 1.6; max-width: 120ch; }
+  .pose-native .dlbar { font-family: var(--font-text); }
   /* On a wide screen: the polar plot, then the figures and the explanation in two columns.
      After the rules above, which it overrides. */
   @media (min-width: 1400px) {
@@ -696,35 +794,34 @@
     .pose-native .pose-sidebar > .pose-callout { grid-column: 2; grid-row: 1 / span 4; }
   }
 
-  .foot { margin-top: 34px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
-    letter-spacing: 0.03em; line-height: 1.7; }
-  .foot a { color: var(--ink-2); }
+  .foot { margin-top: var(--sp-8); font-family: var(--font-text); font-size: 13.5px; color: var(--muted);
+    line-height: 1.7; border-top: 1px solid var(--hair); padding-top: var(--sp-5); max-width: 120ch; }
   summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
   /* ── expandable background sections ─────────────────────────────── */
   .xdetails { background: var(--panel); border: 1px solid var(--card-ring);
-    border-radius: 14px; margin-top: 12px; overflow: hidden; }
-  .xdetails summary { list-style: none; cursor: pointer; padding: 15px 18px;
+    border-radius: 12px; margin-top: var(--sp-3); overflow: hidden; }
+  .xdetails summary { list-style: none; cursor: pointer; padding: 20px 24px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .xdetails summary::-webkit-details-marker { display: none; }
-  .xdetails summary .xt { font-weight: 650; font-size: 14px; }
-  .xdetails summary .xs { display: block; font-family: var(--font-mono); font-size: 10.5px;
-    letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 3px;
-    font-weight: 500; }
-  .xdetails summary .xi { font-family: var(--font-mono); color: var(--accent); font-size: 17px;
-    flex: none; }
+  .xdetails summary .xt { font-family: var(--font-serif); font-weight: 600; font-size: 19px; }
+  .xdetails summary .xs { display: block; font-family: var(--font-text); font-size: 14px;
+    color: var(--muted); margin-top: var(--sp-1); font-weight: 400; }
+  .xdetails summary .xs::first-letter { text-transform: uppercase; }
+  .xdetails summary .xi { font-family: var(--font-text); font-weight: 300; color: var(--ink-2);
+    font-size: 26px; flex: none; }
   .xdetails[open] summary .xi { transform: rotate(45deg); }
-  .xdetails .xbody { padding: 0 18px 18px; color: var(--ink-2); font-size: 13.5px; line-height: 1.65; }
+  .xdetails .xbody { padding: 0 24px 26px; color: var(--ink-2); font-family: var(--font-serif);
+    font-size: 17px; line-height: 1.68; max-width: 78ch; }
   .xdetails .xbody p { margin: 0 0 12px; }
   .xdetails .xbody p:last-child { margin-bottom: 0; }
-  .xdetails .xbody b { color: var(--ink); font-weight: 650; }
-  .xdetails .xbody a { color: var(--accent); }
+  .xdetails .xbody b { color: var(--ink); font-weight: 600; }
   .xdetails .xbody ul { margin: 0 0 14px; padding-left: 20px; }
   .xdetails .xbody ul:last-child { margin-bottom: 0; }
   .xdetails .xbody li { margin: 0 0 9px; }
   .xdetails .xbody li:last-child { margin-bottom: 0; }
-  .xdetails .xbody li::marker { color: var(--accent); }
+  .xdetails .xbody li::marker { color: var(--muted); }
   /* "How the estimate is built": one step per method, edged in that method's colour. */
   .unit-case { text-transform: none; }
   .method-body .m-steps { list-style: none; margin: 0 0 14px; padding: 0; }
@@ -737,20 +834,19 @@
   }
   :root[data-theme="light"] .qa { --qa-bronze: #8a3f10; --qa-silver: #4d5a6b; --qa-gold: #8a6108; }
   :root[data-theme="dark"] .qa { --qa-bronze: #d97c3f; --qa-silver: #a9b6c7; --qa-gold: #e0a521; }
-  .qa-sum { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; line-height: 1.55;
-    max-width: 1000px; }
-  .qa-sum b { color: var(--ink); font-weight: 700; }
+  .qa-sum { margin: 0 0 var(--sp-5); color: var(--ink-2); font-size: 16.5px; line-height: 1.6;
+    max-width: 80ch; }
+  .qa-sum b { color: var(--ink); font-weight: 600; }
   /* Balanced columns, not a grid: the five stages differ in length, and a grid row is as
      tall as its tallest card. */
-  .qa-grid { columns: 300px 4; column-gap: 14px; }
-  .qa-stage { break-inside: avoid; margin: 0 0 14px; background: var(--panel);
-    border: 1px solid var(--card-ring); border-radius: 14px; padding: 14px 16px 6px;
-    box-shadow: var(--shadow); }
-  .qa-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .qa-grid { columns: 300px 4; column-gap: var(--sp-4); }
+  .qa-stage { break-inside: avoid; margin: 0 0 var(--sp-4); background: var(--panel);
+    border: 1px solid var(--card-ring); border-radius: 12px; padding: 18px 20px 8px; }
+  .qa-h { font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: var(--ink);
+    margin-bottom: var(--sp-1); }
   .qa-list { list-style: none; margin: 0; padding: 0; }
   .qa-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 10px;
-    align-items: start; padding: 10px 0; border-top: 1px solid var(--hair); }
+    align-items: start; padding: 12px 0; border-top: 1px solid var(--hair); }
   .qa-row:first-child { border-top: 0; }
   .qa-ic { width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; box-sizing: border-box;
     display: grid; place-items: center; font-size: 10.5px; font-weight: 800; line-height: 1; }
@@ -762,22 +858,29 @@
     background: conic-gradient(var(--accent) 0 50%, transparent 50% 100%); }
   .qa--todo .qa-ic { border: 2px solid var(--muted); }
   .qa--na .qa-ic { border: 2px dashed var(--muted); opacity: 0.6; }
-  .qa-lb { font-weight: 650; font-size: 13.5px; color: var(--ink); line-height: 1.35; }
-  .qa-dt { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin-top: 3px; }
-  .qa-st { grid-column: 2; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em;
-    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .qa-lb { font-weight: 600; font-size: 15px; color: var(--ink); line-height: 1.35; }
+  .qa-dt { font-size: 14px; color: var(--ink-2); line-height: 1.55; margin-top: var(--sp-1); }
+  .qa-st { grid-column: 2; font-family: var(--font-text); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.01em; color: var(--muted); margin-top: 6px; }
   .qa--done .qa-st { color: var(--domain); }
   .qa--warn .qa-st, .qa--partial .qa-st { color: var(--accent); }
   .qa--na .qa-lb, .qa--na .qa-dt { opacity: 0.7; }
-  .qa-tier { display: inline-block; margin-left: 7px; padding: 0 5px; border-radius: 5px;
-    border: 1px solid currentColor; font-family: var(--font-mono); font-size: 9px;
-    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; vertical-align: 1px;
-    line-height: 1.5; }
+  .qa-tier { display: inline-block; margin-left: 7px; padding: 0 6px; border-radius: 999px;
+    border: 1px solid currentColor; font-family: var(--font-text); font-size: 12.5px;
+    font-variant-caps: all-small-caps; letter-spacing: 0.07em; font-weight: 600; vertical-align: 1px;
+    line-height: 1.4; }
   .qa-tier--bronze { color: var(--qa-bronze); }
   .qa-tier--silver { color: var(--qa-silver); }
   .qa-tier--gold { color: var(--qa-gold); }
-  .qa-foot { margin: 0; font-size: 12px; color: var(--muted); }
-  .qa-foot a { color: var(--accent); }
+  .qa-foot { margin: 0; font-size: 14px; color: var(--muted); }
+  /* The calibration badge (the builder's validation badge) brings its own style after this
+     one; under `header` these outrank it. */
+  header .vscore { max-width: 270px; padding: 10px 16px 10px 11px; }
+  header .vscore-label { font-family: var(--font-text); font-size: 11.5px; text-transform: none;
+    font-variant-caps: all-small-caps; letter-spacing: 0.08em; }
+  header .vscore-tier { font-family: var(--font-serif); font-weight: 600; font-size: 18px; }
+  header .vscore-sub { font-family: var(--font-text); font-size: 13px; line-height: 1.4; }
+  header .vscore-cta { font-family: var(--font-text); font-size: 13px; font-weight: 600; }
 </style>
 
 <div class="wrap" data-aoi="Yemen" data-aoi-key="yemen">
@@ -942,7 +1045,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
           <div class="fig-head">
             <div>
               <div class="map-title">The same Sentinel-2-detectable total, by installation size</div>
-              <div class="map-sub">rooftop and ground-mount stacked &middot; linear scale &middot; MWp &middot; hover a bar for detail</div>
+              <div class="map-sub">Rooftop and ground-mount stacked, in MWp. Hover a bar for its count and notes.</div>
             </div>
             <div class="dlbar" data-fig="sizes"></div>
           </div>
@@ -1609,7 +1712,7 @@ out geom;</div>
   function palette(){
     const names = ["page", "panel", "panel-2", "land", "map-bg", "ink", "ink-2", "muted", "hair",
       "prov-stroke", "accent", "accent-dim", "domain", "large", "ground", "ref", "user", "city",
-      "city-halo", "font-mono", "font-display"];
+      "city-halo", "font-mono", "font-display", "font-serif", "font-text"];
     const P = {};
     for (const n of names) P[n.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = tok("--" + n);
     P.dark = isDark();
@@ -3706,7 +3809,8 @@ out geom;</div>
   // Charts (Observable Plot).
   // ════════════════════════════════════════════════════════════════════════════════
   function plotStyle(P){
-    return {color: P.ink2, background: "transparent", fontFamily: P.fontMono, fontSize: "10.5px",
+    return {color: P.ink2, background: "transparent", fontFamily: P.fontText, fontSize: "13px",
+      fontVariantNumeric: "tabular-nums",
       overflow: "visible"};
   }
   function noPlot(mount){
@@ -3733,14 +3837,14 @@ out geom;</div>
     const longest = Math.min(maxChars, Math.max(4, ...rows.map(r => r.Province.length)));
     const nTicks = Math.max(2, Math.floor(width / 110));
     return Plot.plot({
-      width, height: rows.length * 22 + 36, marginLeft: Math.round(longest * 6.5 + 10),
-      marginRight: 54, marginTop: 4, marginBottom: 26, style: plotStyle(P),
+      width, height: rows.length * 28 + 10, marginLeft: Math.round(longest * 7 + 14),
+      marginRight: 60, marginTop: 4, marginBottom: 6, style: plotStyle(P),
       ariaLabel: `Best-estimate PV capacity by province, ${AOI}`,
-      x: {label: "MWp", tickFormat: compact, ticks: nTicks, nice: true},
+      // Every bar carries its value at its end, so the chart needs no axis and no grid.
+      x: {axis: null, nice: true},
       y: {domain: rows.map(r => r.Province), label: null, tickSize: 0, padding: 0.3,
           tickFormat: d => trunc(d, maxChars)},
       marks: [
-        Plot.gridX({ticks: nTicks, stroke: P.hair, strokeOpacity: 1}),
         Plot.barX(rows, {x: "mwp", y: "Province", fill: P.accent,
           tip: interactive ? {format: {x: v => `${fmt5(v)} MWp`, y: true}} : undefined}),
         Plot.text(rows, {x: "mwp", y: "Province", text: d => fmt(d.mwp), dx: 5, textAnchor: "start", fill: P.ink2}),
@@ -3859,7 +3963,7 @@ out geom;</div>
     const parts = ["Rooftop", "Ground-mount"];
     // Bin labels run up to ~11 characters (the unsplit column's in two lines); below ~78 px
     // a column they would collide, so they turn instead.
-    const rotate = band < 78;
+    const rotate = band < 50;
     // The header over the band sits in the top margin, below the y axis's label and above
     // every bar and total label; on a narrow chart it may run past the band.
     const small = domain.filter(binBelow400);
@@ -3867,7 +3971,7 @@ out geom;</div>
     const maxChars = Math.max(16, Math.floor((width - mL - mR - 34) / 6.7));
     const headLines = head.flatMap((t, i) => wrapWords(t, maxChars).map(text => ({text, strong: i === 0})));
     const HEAD_Y0 = 18;
-    const headH = headLines.length ? HEAD_Y0 + headLines.length * 13 + 6 : 0;
+    const headH = headLines.length ? HEAD_Y0 + headLines.length * 17 + 10 : 0;
     const fadeBins = sizeFadeBins();
     const totalOf = bin => totals.find(d => d.bin === bin).total;
     const height = (rotate ? 360 : 330) + headH, marginTop = 18 + headH,
@@ -3907,7 +4011,7 @@ out geom;</div>
       const x = scales.x, x0 = x(small[0]) - (x.step() - x.bandwidth()) / 2;
       headLines.forEach((l, i) => {
         // Plot sets text-anchor: middle on its svg; the header reads from the first bin's edge.
-        const t = el("text", {x: x0 + 2, y: HEAD_Y0 + 10 + i * 13, "text-anchor": "start",
+        const t = el("text", {x: x0 + 2, y: HEAD_Y0 + 10 + i * 17, "text-anchor": "start",
           fill: l.strong ? P.ink2 : P.muted, "font-weight": l.strong ? 600 : null});
         t.textContent = l.text;
         g.appendChild(t);
@@ -3918,10 +4022,10 @@ out geom;</div>
       width, height, marginLeft: mL, marginRight: mR, marginTop, marginBottom,
       style: plotStyle(P), ariaLabel: `PV capacity by installation size, rooftop and ground-mount, ${AOI}`
         + (head.length ? `. ${head[0]}.` : ""),
-      x: {domain, label: "Installation size", padding, tickSize: 0,
-          tickFormat: d => d === SIZE_UNSPLIT ? "<400 m²\nnot split" : d,
+      x: {domain, label: "Installation size (m²)", padding, tickSize: 0,
+          tickFormat: d => d === SIZE_UNSPLIT ? "<400\nnot split" : d.replace(/\s*m²$/, ""),
           tickRotate: rotate ? -38 : 0, labelOffset: rotate ? 70 : 36},
-      y: {label: "MWp", tickFormat: compact, nice: true, domain: [0, yTop]},
+      y: {label: "Capacity (MWp)", tickFormat: compact, nice: true, domain: [0, yTop]},
       color: {domain: parts, range: [P.accent, `url(#${sid})`]},
       marks: [
         hatchDefs(sid, P.accentDim, "rgba(0,0,0,0.38)", -45),
@@ -4568,7 +4672,7 @@ out geom;</div>
       rule = poseCss("--pose-rule"), sun = poseCss("--pose-accent-sun"),
       glint = poseCss("--pose-accent-glint"), excl = poseCss("--pose-excluded"),
       exclLine = poseCss("--pose-excluded-line"), chartBg = poseCss("--pose-bg-chart");
-    const mono = 'ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace';
+    const mono = getComputedStyle(document.documentElement).getPropertyValue("--font-text").trim();
     svg.appendChild(el("path", {d: poseWedgePath(cx, cy, R, P.wedge[0], P.wedge[1]), fill: excl, opacity: 0.9}));
     Array.from({length: tiltMax / 10}, (_, i) => (i + 1) * 10).forEach((t) => {
       const r = (t / tiltMax) * R;
@@ -5067,7 +5171,7 @@ out geom;</div>
   const imgMonth = IMG ? monthLabel(IMG.median.slice(0, 7)) : null;
   const imgLo = IMG ? monthLabel(IMG.p25.slice(0, 7)) : "", imgHi = IMG ? monthLabel(IMG.p75.slice(0, 7)) : "";
   const imgSpread = `${imgLo} to ${imgHi}`, imgBetween = `between ${imgLo} and ${imgHi}`;
-  const refStyle = P => Object.assign(plotStyle(P), {fontFamily: P.fontDisplay, fontSize: "12.5px"});
+  const refStyle = P => Object.assign(plotStyle(P), {fontFamily: P.fontText, fontSize: "14px"});
   const REF_CHAR_PX = 7.4;   // about one digit of 12.5px system-ui, to size the value margin
   const refBarFill = (P, group) => group === "atlas" ? P.accent : P.ref;
 

@@ -115,9 +115,10 @@ SHOTS = [
     # column beside it, so the frame is the header, that headline and the map row, ending
     # in the gutter above the KPI boxes and the province panel. The size column is the
     # taller of the two at this width; the map's height follows the viewport (85% of it, at
-    # most 900 px), so a different `width` or `height` moves the bottom edge.
+    # most 900 px), so a different `width` or `height` moves the bottom edge. Re-cut
+    # 2026-11-27 for the serif/sans type and its larger headline (gutter at 1566-1589).
     Shot("docs/assets/interactive/pakistan_evidence_atlas.html", "pakistan_evidence_atlas",
-         width=1500, height=2100, crop=(24, 24, 1464, 1398),
+         width=1500, height=2100, crop=(24, 24, 1464, 1577),
          ready="document.documentElement.dataset.atlasReady === '1'"),
     # The glint pose survey, framed on the polar plot and its stat column.
     Shot("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose",

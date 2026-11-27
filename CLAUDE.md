@@ -643,6 +643,15 @@ Page rules worth knowing before touching the template:
   beside it, KPIs 2 x 2 beside the province chart, lower sections paired). No EarthPV logo above
   the title (owner). A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`,
   or empty download cards show.
+- **Type (owner, 2026-11-27)**: Source Serif 4 for the title, section titles, the large numbers
+  and longer prose; Source Sans 3 for captions, labels, legends, tables and chart text
+  (`--font-serif`, `--font-text`; `@fontsource-variable/*@5.2.8` from jsDelivr by unicode-range,
+  Georgia and the system sans offline). Spacing on `--sp-1`..`--sp-8`; labels, links and buttons
+  in ink (links underlined in the accent), so colour stays with the data. **The map card, its
+  tooltip, popups and add-a-layer dialog keep `--font-display`/`--font-mono` (owner: the map is
+  not touched)**, so never restyle the page through those two tokens. **Never name a
+  placeholder in a template comment**: the builder and `retemplate_atlas.py` fill every
+  occurrence (a CSS comment naming the badge's placeholder pasted its `<style>` into the page's).
 - **Quality checklist** (`earthpv.quality`, `__QUALITY_HTML__`, section `#quality` below the
   panel orientation, above the background notes; owner, 2026-11-19): 16 checks in five stages (detection, map ground truth, checked by
   people, below 400 m², independent), each done / with flags / under way / not yet / n/a and
