@@ -1168,6 +1168,10 @@ leads -> polygons, behind markers in `data/<aoi>_pipeline_markers/`).
   DONE"**, so removing `<aoi>_atlas_done` does not relaunch a finished country: re-run its steps
   as a one-off unit.
 - **Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
+- **`pixi run pause-downloads` / `resume-downloads` / `downloads-status`** (`scripts/downloads.sh`)
+  freeze and thaw the download units by name (compose, queues, label pulls, VIDA, Geofabrik,
+  fetches), never one with a process on the GPU or in `train|infer|evaluate`. A compose pass
+  paused over an hour exits on thaw (its `timeout 3600` ran on) and the loop starts a fresh one.
 - Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`; stop
   the QUEUE first when removing compute markers.
 - Disk guards: `DISK_MIN_HOME_GB` (default 5 on `/`, the system disk, since

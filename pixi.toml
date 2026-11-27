@@ -121,6 +121,12 @@ docs-screenshots = "python scripts/screenshot_pages.py"
 # Download the released segmentation checkpoint into data/models/release/ and check its
 # SHA-256. See docs/pretrained-model.md.
 fetch-model = "python scripts/fetch_model.py"
+# Pause / resume every running download (compose, country queues, OSM label pulls, VIDA and
+# Geofabrik fetches) with systemd's freezer; training and other compute keep running, and a
+# unit on the GPU is never frozen. See scripts/downloads.sh.
+pause-downloads = "bash scripts/downloads.sh pause"
+resume-downloads = "bash scripts/downloads.sh resume"
+downloads-status = "bash scripts/downloads.sh status"
 
 [feature.docs.tasks]
 docs-serve = "mkdocs serve"

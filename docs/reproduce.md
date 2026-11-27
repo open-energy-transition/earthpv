@@ -1042,6 +1042,28 @@ These are the things that cost time on this project.
       -p WorkingDirectory=/path/to/earthpv bash scripts/compose_loop.sh
     ```
 
+**Pause the downloads, not the training.** When the network is needed for something else,
+freeze every running download and let it continue later:
+
+```bash
+pixi run pause-downloads     # freeze compose, the country queues, label pulls and fetches
+pixi run downloads-status    # each download unit, paused or not, with compose's cell count
+pixi run resume-downloads    # continue where they stopped
+```
+
+`scripts/downloads.sh` finds the jobs by unit name (`earthpv-compose-*`, the queues,
+`*-labels*`, `*-vida`, `earthpv-geofabrik-*`, `*-fetch*`), so it covers units launched with
+`systemd-run --user` as above, including the next country's compose, without naming them. It
+uses systemd's freezer (`systemctl --user freeze` and `thaw`): processes stop where they are
+and nothing is killed. Training, inference and every other compute step keep running. A unit
+with a process on the GPU is never frozen, because a frozen trainer was once killed by
+systemd-oomd and its unit could neither thaw nor restart; to pause training, stop it cleanly
+and resume from `last.ckpt`. Each compose pass runs under a wall-clock `timeout` (an hour in
+the country queue) whose clock keeps running while frozen, so after a longer pause the pass
+exits as soon as it thaws and `compose_loop.sh` starts a fresh one with a new signing token;
+finished cells are kept. A unit killed while frozen, for example by the out-of-memory killer,
+has to be relaunched, and compose resumes where it stopped.
+
 **Planetary Computer has frequent multi-hour outages**, either Azure Front Door 504s or
 requests that hang with no error at all. Every network-bound stage is resumable by design,
 with temp-then-rename writes and per-cell or per-target skip-if-exists. The practical
@@ -1076,6 +1098,7 @@ burned masks, not a runtime parameter.
 | `screenshot_pages.py` | Render the interactive HTML pages to PNG with headless Firefox, for the README. |
 | `new_region.py` | Preflight the four open data sources for a new area, register it in `configs/aoi.yaml`, print its runbook. See [Scale to a new country](#scale-to-a-new-country). |
 | `compose_loop.sh` | Auto-restarts `compose` every 30 minutes for a fresh token; exits on target reached, clean completion, or three no-progress cycles. Takes `[AOI] [TARGET_CELLS] [MIN_BUILDINGS]`. |
+| `downloads.sh` | `pause`, `resume` or `status` of every running download unit (`pixi run pause-downloads`, `resume-downloads`, `downloads-status`). Never freezes a unit on the GPU. |
 | `rebuild_training.sh` | Rebuilds an area's chips after its compose finishes, then remerges the combined training index. |
 | `infer_after_compose.sh` | Waits for compose, then chains infer into postprocess into export. |
 | `run_preboom_pipeline.sh` | The full two-epoch pipeline behind marker-file resumability. |
