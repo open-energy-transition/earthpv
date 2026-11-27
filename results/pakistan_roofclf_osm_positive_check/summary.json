@@ -1,0 +1,94 @@
+{
+ "generated_utc": "2026-11-27T20:29:53Z",
+ "aoi": "pakistan",
+ "osm_solar": "data/labels/pakistan_overpass_solar.parquet",
+ "osm_newest_edit": "2026-10-25 09:00:48+00:00",
+ "roofclf_dir": "data/roofclf_national_with_sppi/pakistan/prob",
+ "model_dir": "data/roofclf",
+ "pricing_summary": "data/roofclf_national_with_sppi/pakistan/density/sub400_central_summary.json",
+ "deployment_threshold": 0.247,
+ "band_edge_bldg_km2": 1717.10097326539,
+ "quadrats": {
+  "lower": [
+   "bahawalnagar_rural",
+   "faisalabad",
+   "islamabad_north",
+   "islamabad_northeast",
+   "islamabad_west",
+   "layyah_periurban",
+   "lodhran_periurban",
+   "malok",
+   "multan"
+  ],
+  "upper": [
+   "islamabad_east",
+   "islamabad_south",
+   "karachi_coast",
+   "lahore",
+   "peshawar",
+   "peshawar_west",
+   "sanghar",
+   "sialkot",
+   "site_karachi",
+   "sukkur"
+  ]
+ },
+ "calibration_areas_excluded": 45,
+ "seg_lead_files": [
+  "data/predictions/pakistan/candidates.parquet",
+  "data/predictions/pakistan/candidates_PRE_v16_20261026.parquet",
+  "data/predictions/pakistan/pakistan_pv_new_leads.geojson",
+  "data/predictions/pakistan/pakistan_pv_new_leads_vs_osm_160726.geojson",
+  "results/pakistan_pv_new_leads.geojson",
+  "results/pakistan_pv_new_leads_epochclean.geojson",
+  "results/pakistan_pv_new_leads_points_density.geojson",
+  "results/pakistan_v14_leads_20261025/pakistan_v14_new_leads.geojson",
+  "results/pakistan_v16_leads_20261026/pakistan_v16_new_leads.geojson"
+ ],
+ "roofclf_lead_files": [
+  "results/pakistan_small_pv_josm_leads.geojson",
+  "results/pakistan_small_pv_josm_leads_roofclf_only.geojson",
+  "results/pakistan_small_pv_josm_leads_sppi_only.geojson"
+ ],
+ "roofclf_leads_date": "2026-08-01",
+ "lead_radius_m": 30.0,
+ "small_rooftop_arrays_outside_calibration": 7538,
+ "cells_with_arrays": 129,
+ "cells_in_domain": 125,
+ "density_domain_bldg_km2": [
+  48.5,
+  5258.0
+ ],
+ "pv_roofs": 10890,
+ "national_pv_roofs_roofclf_led": 0,
+ "quadrat_pv_roofs": 13749,
+ "n_boot": 1000,
+ "seed": 20261107,
+ "rule": {
+  "statistic": "d = post-stratified national mean p - quadrat mean p, per array-size bin, on PV roofs (mean p is what probability-weighted pricing uses; the flag rate at the deployment threshold is reported beside it)",
+  "consistent": "the 90% interval of d contains 0, or |d| <= 0.05",
+  "evaluated": "bins where every seg stratum the quadrats populate holds >= 20 national PV roofs",
+  "transfers": "every evaluated bin consistent, in both roofclf-lead variants",
+  "mixed": "consistent in one roofclf-lead variant only: the roofclf-led arrays decide it",
+  "check": "some evaluated bin inconsistent in both variants: the sensitivity the national pricing assumes does not hold there",
+  "status": "proposed 2026-11-07 -- confirm before relying on it"
+ },
+ "verdict": {
+  "lower": "transfers",
+  "upper": "transfers",
+  "all": "transfers"
+ },
+ "status_by_variant": {
+  "excl_roofclf_leads": {
+   "lower": true,
+   "upper": true,
+   "all": true
+  },
+  "incl_roofclf_leads": {
+   "lower": true,
+   "upper": true,
+   "all": true
+  }
+ },
+ "not_validated_here": "level (score mass on PV-free roofs) and fill per PV roof / coverage ratio -- see the module docstring and selection.csv"
+}

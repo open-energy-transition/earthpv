@@ -1,0 +1,21 @@
+side,measure,bin,value
+quadrats,array_size_share,"(-0.001, 25.0]",0.2793
+quadrats,array_size_share,"(25.0, 50.0]",0.2141
+quadrats,array_size_share,"(50.0, 100.0]",0.3144
+quadrats,array_size_share,"(100.0, 200.0]",0.1587
+quadrats,array_size_share,"(200.0, 400.0]",0.0335
+quadrats,median_fill_on_pv_roof,"(0.0, 100.0]",0.313
+quadrats,median_fill_on_pv_roof,"(100.0, 200.0]",0.2862
+quadrats,median_fill_on_pv_roof,"(200.0, 400.0]",0.2671
+quadrats,median_fill_on_pv_roof,"(400.0, 1000.0]",0.2107
+quadrats,median_fill_on_pv_roof,"(1000.0, inf]",0.0886
+national_mapped,array_size_share,"(-0.001, 25.0]",0.2819
+national_mapped,array_size_share,"(25.0, 50.0]",0.1629
+national_mapped,array_size_share,"(50.0, 100.0]",0.2445
+national_mapped,array_size_share,"(100.0, 200.0]",0.2051
+national_mapped,array_size_share,"(200.0, 400.0]",0.1056
+national_mapped,median_fill_on_pv_roof,"(0.0, 100.0]",0.4075
+national_mapped,median_fill_on_pv_roof,"(100.0, 200.0]",0.3534
+national_mapped,median_fill_on_pv_roof,"(200.0, 400.0]",0.321
+national_mapped,median_fill_on_pv_roof,"(400.0, 1000.0]",0.276
+national_mapped,median_fill_on_pv_roof,"(1000.0, inf]",0.1502

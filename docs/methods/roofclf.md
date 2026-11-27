@@ -333,6 +333,13 @@ out-of-fold scores of the 41 areas, and it catches 64% of PV-carrying buildings 
 numbers are still leave-one-quadrat-out measurements: one threshold instead of 41 per-fold
 ones, but no building was ever scored by a model that saw its own quadrat.
 
+So half the flagged roofs carry no mapped PV by construction, and 0.50 has to be read against
+the 13.2% of the areas' roofs that carry PV at all: the same number of roofs picked by chance
+holds 0.13 PV roofs per roof, picked by size alone 0.35. [Ranking is not a
+level](../how-it-works.md#ranking-is-not-a-level) sets the three side by side area by area,
+and says why the roofs without PV do not inflate the figure where it is calibrated but can
+wherever their share differs.
+
 **Since 2026-10-25 the threshold no longer decides what Best estimate counts.** It picks
 the buildings for mapping leads and for the
 [random-cell validation](roofclf-national-validation.md). Until 2026-11-13 it also defined
@@ -620,6 +627,11 @@ Three things about that table are worth stating plainly:
   the panels. That is a sensor-resolution ceiling, not a training defect.
 - **Speak for the country.** Everything above is scoped to the calibrated domain, and the
   restriction is enforced in code rather than left to the reader.
+- **Take its level from PV mapped outside complete areas.** Arrays mapped elsewhere in
+  OpenStreetMap confirm that a PV roof scores the same outside the areas as inside, but what
+  got mapped is selected (near segmentation leads, larger arrays) and includes no roof
+  without PV, so it cannot give the coverage ratio or the level ([Ranking is not a
+  level](../how-it-works.md#ranking-is-not-a-level)).
 
 ## Running it
 

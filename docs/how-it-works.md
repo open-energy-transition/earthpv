@@ -112,8 +112,10 @@ a country's building-density range rather than picked by hand, so the sample is 
 for its solar. Complete areas are what the small-installation half is fitted and tested on:
 `roofclf`'s leave-one-area-out skill, its coverage ratio and area recall per building size
 and density stratum, and the density band a figure is published in all come from
-them ([Calibration quadrats](methods/calibration-quadrats.md)). Pakistan has 30
-in its fit. A country without any publishes large installations only, and its atlas says so.
+them ([Calibration quadrats](methods/calibration-quadrats.md)). Pakistan has 41
+in its fit, 19 of which set the coverage ratio. Why only complete areas can do this is
+explained under [Ranking is not a level](#ranking-is-not-a-level). A country without any
+publishes large installations only, and its atlas says so.
 
 #### 5. Investigate local datasets
 
@@ -265,6 +267,94 @@ still large relative to a 100 m&sup2; pixel. Where that stops being true, the in
 working, and France has no `roofclf` half in its atlas for exactly this reason. The nearest
 thing to the French regime inside Pakistan is the sparse-density stratum, already the least
 well supported part of the coverage-ratio fit, and it should be read with this in mind.
+
+### Ranking is not a level
+
+`roofclf` does two jobs, and they need different evidence. Its **ranking** says which roofs
+are likelier than others to carry panels. Its **level** says how much PV the roofs of a place
+carry in total, which is the number the atlas prints. Any set of mapped panels can test the
+ranking. Only a completely mapped area can set the level, because the level depends as much
+on the roofs without panels as on the roofs with them, and only a complete area says which
+roofs those are.
+
+![Two panels. Left, one point per Pakistani calibration area: the share of the roofs roofclf flags that carry mapped PV, against the share of all the area's roofs that do. Every area sits well above the chance diagonal, and above a second marker showing roofs picked by size alone in the same number; precision ranges from 0.15 in Attock and 0.17 in Quetta to 0.70 in Hasal and Rahim Yar Khan, and all 41 areas together sit at 0.50 against a base rate of 0.13. Right, PV roofs inside the 19 areas that set the price against PV roofs mapped elsewhere in OpenStreetMap: the share roofclf flags agrees within 0.07 in every array-size bin, while the roofs mapped elsewhere sit near a segmentation lead three times as often, carry arrays of 100 to 400 square metres 1.6 times as often and read 1.2 to 1.3 times the panel cover of a same-sized roof in the areas.](assets/figures/ranking_vs_level.svg#only-light)
+![Two panels. Left, one point per Pakistani calibration area: the share of the roofs roofclf flags that carry mapped PV, against the share of all the area's roofs that do. Every area sits well above the chance diagonal, and above a second marker showing roofs picked by size alone in the same number; precision ranges from 0.15 in Attock and 0.17 in Quetta to 0.70 in Hasal and Rahim Yar Khan, and all 41 areas together sit at 0.50 against a base rate of 0.13. Right, PV roofs inside the 19 areas that set the price against PV roofs mapped elsewhere in OpenStreetMap: the share roofclf flags agrees within 0.07 in every array-size bin, while the roofs mapped elsewhere sit near a segmentation lead three times as often, carry arrays of 100 to 400 square metres 1.6 times as often and read 1.2 to 1.3 times the panel cover of a same-sized roof in the areas.](assets/figures/ranking_vs_level.dark.svg#only-dark)
+
+**Half the roofs roofclf flags carry no mapped PV, and that is the number it is set to.** The
+41 Pakistani areas in the fit hold 130,418 roofs, 17,268 of them (13.2%) with mapped PV. At
+the deployment threshold roofclf flags 22,184 roofs, and 11,092 of those have no mapped PV: a
+precision of 0.50. The threshold is chosen that way. It flags as many roofs as the ranking
+allows while precision holds at 0.50, so 0.50 is a setting, not a verdict. The number has to
+be read against how common PV is, at the same count of flagged roofs:
+
+| The same 22,184 roofs, picked by | Precision | PV roofs found | Mapped PV area on them |
+| --- | --- | --- | --- |
+| Chance | 0.13 | 17% | 19% |
+| Roof size alone | 0.35 | 45% | 78% |
+| `roofclf` | **0.50** | **64%** | **88%** |
+
+A flagged roof is 3.8 times likelier than a random one to carry panels, and roofclf beats the
+roof-size ranking in all 23 areas with enough PV to compare (left panel). A stricter cut is
+purer: 83% of the top 1% of roofs carry PV, 75% of the top 5%. Every score here is out of
+fold, from a model that never saw the roof's area. Two things keep per-roof precision from
+going much higher. A typical array covers a fraction of one 10 m pixel ([the pixel
+figure](#two-ways-to-see-a-panel-in-a-10-m-pixel)), so a roof of the kind that adopts PV
+scores like one that has. And an area is complete only against the imagery it was mapped
+on, so panels built since then count as false here: 0.50 is a floor.
+
+**The roofs without PV do not inflate the figure where it is calibrated.** The atlas never
+counts flagged roofs. It adds up every roof's score and turns the sum into capacity with the
+coverage ratio, mapped PV area over score-weighted roof area, measured in these same areas per
+building size and density stratum. In the areas 60% of the summed score sits on roofs without
+PV (47% once weighted by roof area), and the coverage ratio is fitted with that share inside
+it, so it is priced out.
+
+**What can go wrong is that the share changes from place to place.** Precision runs from 0.15
+in Attock and 0.17 in Quetta, where bright roofs score like panels, to 0.70 in Hasal and
+Rahim Yar Khan. A coverage ratio carries the share of the areas it was fitted on to every
+cell it prices, and where a cell's roofs differ, the level is off, in either direction. The
+first two sparse areas read this way disagree in sign: the scores understate PV about 2.5
+times in the Kasur gap area and overstate it about twice in the randomly drawn Qilla Abdullah
+area, on 16 and 33 PV roofs, so pointers rather than answers. In Pakistan 2,937 of the 2,957
+cells priced fall in the lower density band, which 9 areas set. This is why the
+[random-cell review](methods/roofclf-national-validation.md) follows every national scoring,
+and why a country whose areas show a ranking but no stable level publishes its small rooftops
+as "not measured": Yemen's scores rank roofs well and price them worse than roof size alone.
+
+**Mapped PV outside the areas tests the ranking, never the level.** Thousands of arrays below
+400 m&sup2; are mapped across Pakistan outside the calibration areas: 7,538 in the
+2026-10-25 pull, in 129 cells, which put mapped PV on 10,890 roofs inside the priced
+density band. They look like free validation, and half of what they offer is. They were
+mapped from segmentation leads, by screening areas and by chance finds; three accounts made
+the last edit to 89% of them; and nobody checked the roofs around them. The right panel sets
+them beside the PV roofs of the 19 areas that set the price, size bin by size bin:
+
+- **Sensitivity transfers.** A PV roof mapped outside the areas scores like a PV roof inside
+  them. Pooled over both density bands, the mean score differs by at most 0.03 in any array-size
+  bin and the share flagged by at most 0.07; in every bin of either band the 90% interval of
+  the difference contains zero. The comparison is made within "near a segmentation lead" and
+  "not", since arrays found through a lead are the easier ones to see.
+- **What got mapped does not.** The roofs mapped outside sit near a segmentation lead three
+  times as often (15% against 5%), carry arrays of 100 to 400 m&sup2; 1.6 times as often, and
+  read 1.2 to 1.3 times the panel cover of a same-sized roof in the areas. A coverage ratio
+  fitted on them would carry that selection into the price.
+- **The level cannot be read at all**: the set holds no roof without PV.
+
+So the set is a standing out-of-sample check of sensitivity, re-run after each refit
+(`scripts/roofclf_osm_positive_check.py`, which writes the verdict per size bin to
+`results/pakistan_roofclf_osm_positive_check/`), and never a source for the coverage ratio.
+The same missing half closed every other route to a level without complete areas tried so
+far: a past image epoch as the negative set, prior-shift estimators and a donor country's
+level ([Experiments](experiments.md)).
+
+**Segmentation, asked the same question.** Inside Pakistan's 45 calibration areas the
+published model drew 321 candidates, in 11 of them; the rest hold only PV too small for it.
+3 have no mapped array within 100 m, the distance its [precision table](methods/calibration.md)
+counts as a match, and 39 (12%) touch no mapped array: 19 of 284 on roofs, 20 of 37 on the
+ground. That ground candidates are far less often real is why the table prices every
+candidate by size and placement. Both counts are upper bounds for the same imagery-date
+reason as above. The numbers are in `results/pakistan_calibration_area_false_positives.json`,
+written by `scripts/calibration_area_false_positives.py` with the per-area table beside it.
 
 ### Two products fall out of one model
 
@@ -436,7 +526,7 @@ the same underlying artifacts:
 | Chips, train, infer | Yes -- the segmentation checkpoint every polygon comes from | `chips.py`, `train.py`, `infer.py` | [Detection model](methods/detection.md) |
 | postprocess, export | Yes -- every mapping lead, any size | `postprocess.py`, `export.py` | [Segmentation & the building map](methods/segmentation.md) |
 | density, calibration | Yes -- segmentation's ≥ 400 m² total, rooftop and ground-mount | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
-| roofclf | Yes -- < 400 m² rooftop, plus ≥ 400 m² rooftop inside the calibrated cells | `roofclf.py`, `sub400_capacity.py`, `roofclf_ge400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
+| roofclf | Yes -- < 400 m² rooftop, plus ≥ 400 m² rooftop inside the calibrated cells | `roofclf.py`, `sub400_capacity.py`, `roofclf_ge400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md), this page's [Ranking is not a level](#ranking-is-not-a-level) |
 | Plausibility gate | Yes | `plausibility.py` | this page's [Combine, rank, and gate](#combine-rank-and-gate) section |
 | Atlas | Yes -- the evidence atlas, the primary output | `atlas.py` | [Capacity map](results/capacity.md), [Growth](results/growth.md) |
 | Glint | Optional -- boosts leads ranking only | `glint.py` | [Solar glint](methods/glint.md), [Panel pose](results/pv-pose.md) |

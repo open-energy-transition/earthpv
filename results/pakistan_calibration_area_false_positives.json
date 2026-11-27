@@ -1,0 +1,55 @@
+{
+ "aoi": "pakistan",
+ "roofclf_fit": "data/roofclf",
+ "roofclf": {
+  "threshold": 0.24698889898920245,
+  "n_roofs": 130418,
+  "n_pv": 17268,
+  "base_rate": 0.13240503611464674,
+  "n_flagged": 22184,
+  "false_pos": 11092,
+  "precision": 0.5,
+  "recall": 0.6423442205235117,
+  "pv_area_recall": 0.8797415439303851,
+  "roof_area_only": {
+   "precision": 0.3495311936530833,
+   "pv_area_recall": 0.7759875539697818
+  },
+  "random": {
+   "precision": 0.13240503611464674,
+   "pv_area_recall": 0.19001361542766387
+  },
+  "precision_top_share": {
+   "1%": 0.8274539877300614,
+   "5%": 0.7538343558282209,
+   "10%": 0.6367609845870715
+  },
+  "score_mass_pv_free_share": 0.5985606236232637,
+  "roof_area_weighted_score_pv_free_share": 0.4710302306138037,
+  "areas_compared": 23,
+  "areas_beating_roof_area": 23,
+  "precision_range_compared": [
+   0.14893617021276595,
+   0.7040816326530612
+  ]
+ },
+ "segmentation_candidates": "data/predictions/pakistan/candidates.parquet",
+ "osm_solar": "data/labels/pakistan_overpass_solar.parquet",
+ "segmentation": {
+  "areas": 45,
+  "areas_with_candidates": 11,
+  "candidates": 321,
+  "beyond_match_distance": 3,
+  "touching_no_mapped_pv": 39,
+  "rooftop": {
+   "n": 284,
+   "touching_no_mapped_pv": 19
+  },
+  "ground_or_other": {
+   "n": 37,
+   "touching_no_mapped_pv": 20
+  },
+  "outline_replaced_by_osm": 279,
+  "match_distance_m": 100.0
+ }
+}

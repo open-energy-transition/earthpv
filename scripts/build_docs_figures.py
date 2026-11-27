@@ -1755,6 +1755,151 @@ def fig_pv_vs_building(t: Theme):
     save(fig, t, "pv_vs_building")
 
 
+# Areas named on the chart, with the label's offset in points from the roofclf marker.
+RANKING_LABELLED = {"quetta": ("Quetta", (7, -9), "left"),
+                    "attock_periurban": ("Attock", (0, 7), "center"),
+                    "hasal": ("Hasal", (-5, 2), "right"),
+                    "lahore": ("Lahore", (9, -3), "left")}
+RANKING_MIN_N = 20      # flagged roofs and PV roofs an area needs to be drawn
+FILL_ROOF_BINS = ("(0.0, 100.0]", "(100.0, 200.0]", "(200.0, 400.0]")
+FILL_ROOF_LABELS = ("roofs up to 100 m$^2$", "100-200 m$^2$", "200-400 m$^2$")
+
+
+def read_ranking_vs_level():
+    by_area = source("results/pakistan_roofclf_precision_by_area.csv")
+    by_size = source("results/pakistan_roofclf_osm_positive_check/by_size.csv")
+    sel = source("results/pakistan_roofclf_osm_positive_check/selection.csv")
+    if by_area is None or by_size is None or sel is None:
+        return None
+    return (list(csv.DictReader(by_area.open())), list(csv.DictReader(by_size.open())),
+            list(csv.DictReader(sel.open())))
+
+
+def fig_ranking_vs_level(t: Theme):
+    """roofclf's ranking holds everywhere it is tested; only complete areas can give a level."""
+    d = read_ranking_vs_level()
+    if d is None:
+        return
+    by_area, by_size, sel = d
+    fig, (ax, ax2) = plt.subplots(
+        1, 2, figsize=(9.6, 4.1), gridspec_kw={"width_ratios": [1.0, 1.05]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax, ax2):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+        a.set_axisbelow(True)
+
+    # Left: per-area precision against the area's base rate, at the same flagged count.
+    rows = [r for r in by_area if r["area"] != "ALL"
+            and int(r["n_flagged"]) >= RANKING_MIN_N and int(r["n_pv"]) >= RANKING_MIN_N]
+    pooled = next(r for r in by_area if r["area"] == "ALL")
+    ax.grid(color=t.rule, linewidth=0.8)
+    ax.plot([0, 0.32], [0, 0.32], color=t.ink_faint, linewidth=1.0, linestyle="--", zorder=1)
+    ax.text(0.30, 0.255, "chance", fontsize=7.5, color=t.ink_dim, rotation=33,
+            ha="right", rotation_mode="anchor")
+    for r in rows:
+        b, p, pa = float(r["base_rate"]), float(r["precision"]), float(r["precision_roof_area_only"])
+        ax.plot([b, b], [pa, p], color=t.ink_faint, linewidth=0.9, zorder=2)
+        ax.scatter([b], [pa], s=16, facecolor=t.surface, edgecolor=t.ink_dim, linewidth=0.9,
+                   zorder=3)
+        ax.scatter([b], [p], s=10 + 0.025 * int(r["n_flagged"]), color=t.s1, alpha=0.9,
+                   linewidths=0, zorder=4)
+        if r["area"] in RANKING_LABELLED:
+            name, off, ha = RANKING_LABELLED[r["area"]]
+            ax.annotate(name, (b, p), xytext=off, textcoords="offset points", fontsize=7,
+                        color=t.ink_dim, ha=ha)
+    pb, pp = float(pooled["base_rate"]), float(pooled["precision"])
+    ppa = float(pooled["precision_roof_area_only"])
+    ax.scatter([pb], [pp], s=70, marker="D", color=t.ink, zorder=5)
+    ax.scatter([pb], [ppa], s=40, marker="D", facecolor=t.surface, edgecolor=t.ink,
+               linewidth=1.1, zorder=5)
+    ax.annotate(f"all {len(by_area) - 1} areas together:\nchance {pb:.2f}\n"
+                f"roof size {ppa:.2f}\nroofclf {pp:.2f}", (pb, pp), xytext=(0.205, 0.04),
+                textcoords="data", fontsize=7.5, color=t.ink, va="bottom",
+                arrowprops={"arrowstyle": "-", "color": t.ink_dim, "linewidth": 0.8,
+                            "shrinkB": 6})
+    ax.scatter([], [], s=30, color=t.s1, label="roofclf, flagged roofs")
+    ax.scatter([], [], s=16, facecolor=t.surface, edgecolor=t.ink_dim,
+               label="same number picked by roof size")
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=7.5, handletextpad=0.3)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    ax.set_xlim(0, 0.3)
+    ax.set_ylim(0, 0.82)
+    ax.set_xlabel("share of the area's roofs carrying mapped PV", fontsize=8.5, color=t.ink_dim)
+    ax.set_ylabel("share of picked roofs carrying mapped PV", fontsize=8.5, color=t.ink_dim)
+    ax.set_title("Ranking: every area well above chance, at its own level",
+                 fontsize=9, color=t.ink, loc="left")
+
+    # Right: PV roofs mapped elsewhere vs the pricing areas' PV roofs, all shares in [0, 1].
+    # Both densities pooled, roofclf-led arrays excluded (the check's cleaner variant).
+    rows_all = [r for r in by_size
+                if r["band"] == "all" and r["variant"] == "excl_roofclf_leads"]
+    items = []   # (label, inside, outside, group)
+    for r in rows_all:
+        lo, hi = r["array_bin"].split("-")
+        out = r["flag_national_adj"] or r["flag_national_raw"]
+        if r["flag_quadrat"] and out:
+            items.append((f"arrays {float(lo):g}-{float(hi):g} m$^2$", float(r["flag_quadrat"]),
+                          float(out), "flag"))
+
+    def pooled(side_n: str, share: str) -> float:
+        n = [float(r[side_n]) for r in rows_all]
+        return sum(k * float(r[share]) for k, r in zip(n, rows_all)) / sum(n)
+
+    items.append(("near a segmentation lead", pooled("n_quadrat", "quadrat_seg_near_share"),
+                  pooled("n_national", "national_seg_near_share"), "sel"))
+    share = {(r["side"], r["bin"]): float(r["value"]) for r in sel
+             if r["measure"] == "array_size_share" and r["value"]}
+    big = ("(100.0, 200.0]", "(200.0, 400.0]")
+    items.append(("arrays of 100-400 m$^2$", sum(share[("quadrats", b)] for b in big),
+                  sum(share[("national_mapped", b)] for b in big), "sel"))
+    fill = {(r["side"], r["bin"]): r["value"] for r in sel
+            if r["measure"] == "median_fill_on_pv_roof"}
+    for b, lab in zip(FILL_ROOF_BINS, FILL_ROOF_LABELS):
+        q, n = fill.get(("quadrats", b)), fill.get(("national_mapped", b))
+        if q and n:
+            items.append((f"panel cover, {lab}", float(q), float(n), "sel"))
+    n_flag = sum(1 for i in items if i[3] == "flag")
+    ys = [len(items) - i + (0.0 if i >= n_flag else 1.1) for i in range(len(items))]
+    for y, (lab, q, n, grp) in zip(ys, items):
+        ax2.plot([q, n], [y, y], color=t.ink_faint, linewidth=1.4, zorder=2)
+        ax2.scatter([q], [y], s=34, facecolor=t.surface, edgecolor=t.ink, linewidth=1.1, zorder=3)
+        ax2.scatter([n], [y], s=34, color=t.s3, zorder=4)
+        ax2.text(1.03, y, f"x{n / q:.1f}" if grp == "sel" else f"{n - q:+.2f}",
+                 fontsize=7.5, va="center", ha="left",
+                 color=t.ink if grp == "sel" else t.ink_dim)
+    ax2.set_yticks(ys)
+    ax2.set_yticklabels([i[0] for i in items], fontsize=7.5)
+    top_flag, top_sel = ys[0] + 0.8, ys[n_flag] + 0.8
+    ax2.text(0.0, top_flag, "Sensitivity: share of PV roofs flagged (transfers)",
+             fontsize=8, color=t.ink, fontweight="bold", va="center")
+    ax2.text(0.0, top_sel, "Selection: what got mapped (does not)",
+             fontsize=8, color=t.ink, fontweight="bold", va="center")
+    ax2.set_xlim(0, 1.0)
+    ax2.set_ylim(min(ys) - 0.7, top_flag + 0.6)
+    ax2.grid(axis="x", color=t.rule, linewidth=0.8)
+    ax2.scatter([], [], s=34, facecolor=t.surface, edgecolor=t.ink, label="calibration areas")
+    ax2.scatter([], [], s=34, color=t.s3, label="mapped elsewhere in OSM")
+    leg2 = ax2.legend(frameon=False, loc="lower right", fontsize=7.5, handletextpad=0.3)
+    for txt in leg2.get_texts():
+        txt.set_color(t.ink_dim)
+    ax2.set_title("Mapped PV elsewhere: tests the ranking, not the level",
+                  fontsize=9, color=t.ink, loc="left")
+
+    fig.subplots_adjust(left=0.07, right=0.95, top=0.9, bottom=0.13, wspace=0.62)
+    titled(fig, t, "A ranking can be checked anywhere; a level only where every roof is known",
+           f"Pakistan, roofclf's out-of-fold scores on the {len(by_area) - 1} calibration areas "
+           f"it is fitted on (areas with {RANKING_MIN_N}+ flagged and PV roofs drawn); right, "
+           "PV roofs under 400 m$^2$ mapped in OpenStreetMap outside the areas against those "
+           "inside the 19 areas that set the price. Mapped elsewhere, a PV roof scores as it "
+           "does inside; but what gets mapped is selected, and no roof without PV is mapped, "
+           "so that set cannot price anything", width=118)
+    save(fig, t, "ranking_vs_level")
+
+
 # ----------------------------------------------------- hand-authored SVG diagrams
 
 PIPELINE_STRIP = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="214"
@@ -3210,6 +3355,7 @@ def main():
         fig_density_domain(t)
         fig_attribution_gap(t)
         fig_pv_vs_building(t)
+        fig_ranking_vs_level(t)
         fig_border_array_size(t)
         fig_germany_calibration(t)
         fig_germany_register_validation(t)

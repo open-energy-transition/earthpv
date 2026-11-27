@@ -142,9 +142,15 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   segmentation leads, area screening and chance finds, so it is positive-only and selected.
   `scripts/roofclf_osm_positive_check.py` compares roofclf's score on those roofs with the
   quadrats' out-of-fold score per array-size bin, post-stratified on proximity to a segmentation
-  lead. Never read fill per PV roof, the coverage ratio or the level from that set (mappers skip
-  tiny arrays: fill reads 1.4-2.5x the quadrats'). `scripts/osm_sweep_completeness_review.py`
-  draws a blind, score-stratified review of unmapped roofs in densely mapped ~1 km boxes; a box
+  lead (writes `results/pakistan_roofclf_osm_positive_check/`; sensitivity transfers in every
+  bin, 2026-11-27). Never read fill per PV roof, the coverage ratio or the level from that set:
+  it holds no roof without PV, and what got mapped is selected (near a segmentation lead 3x as
+  often, arrays of 100-400 m² 1.6x, panel cover 1.2-1.3x the pricing quadrats'; the 2026-11-07
+  scratch read of 1.4-2.5x used a roof-only label). `scripts/calibration_area_false_positives.py`
+  counts both detectors' false positives inside the calibration areas against chance and a
+  roof-size ranking (docs/how-it-works.md, "Ranking is not a level").
+  `scripts/osm_sweep_completeness_review.py` draws a blind, score-stratified review of unmapped
+  roofs in densely mapped ~1 km boxes; a box
   found nearly complete is a candidate calibration area, which only the owner can declare.
 - **Solar farm (blob) review (owner, 2026-11-02).** A model outline above the merge cap stays
   out of capacity until it is mapped or a person judges it solar on the Sentinel-2 page (three
