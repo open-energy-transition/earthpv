@@ -28,9 +28,9 @@ theme:
   language: en
   logo: assets/figures/earthpv-logo-mark-white.png
   favicon: assets/figures/favicon.png
-  # No webfont: the interactive result pages embedded here set their own faces to
-  # system-ui / ui-monospace, and extra.css points Material at the same stacks so text
-  # matches across an iframe boundary. Also drops the Google Fonts request.
+  # No Google webfont: extra.css serves the atlases' own faces (Source Sans 3, Source
+  # Serif 4) from assets/fonts/ so text matches across an iframe boundary, and this drops
+  # Material's Roboto and its Google Fonts request.
   font: false
   icon:
     repo: fontawesome/brands/github

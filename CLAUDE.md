@@ -958,7 +958,9 @@ Nav runs **Results → How it works → Setup → Experiments**. `docs/open-ques
 **excluded from the published site** (`exclude_docs`), so no site page may link to it; an item is
 removed once closed and moves to the register with a verdict. Every doc under `docs/issues/`
 carries a dated status banner. The site chrome (`docs/assets/stylesheets/extra.css`) shares its
-`--pv-*` tokens with the embedded result pages; keep both in sync by eye.
+`--pv-*` tokens with the embedded result pages; keep both in sync by eye. It also uses the
+atlas's two faces (Source Sans 3, Source Serif 4 for h1-h3), served from `docs/assets/fonts/`
+with their OFL licences, never from a CDN or Google Fonts.
 `docs/assets/javascripts/embed-theme.js` drives each embedded page's theme from Material's toggle.
 `pixi run docs-screenshots` needs a real (snap) Firefox profile staged under
 `~/earthpv-screenshots/` (not `/tmp` or the external drive) and pins `ui.systemUsesDarkTheme` and
